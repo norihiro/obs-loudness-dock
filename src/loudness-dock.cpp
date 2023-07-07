@@ -42,6 +42,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	r128_short = add_stat(obs_module_text("Label.Short"));
 	r128_integrated = add_stat(obs_module_text("Label.Integrated"));
 	r128_range = add_stat(obs_module_text("Label.Range"));
+	r128_peak = add_stat(obs_module_text("Label.Peak"));
 
 	QHBoxLayout *buttonLayout = new QHBoxLayout;
 	buttonLayout->addStretch();
@@ -115,4 +116,7 @@ void LoudnessDock::on_timer()
 
 	snprintf(str, sizeof(str), "%0.1f LU", results[3]);
 	r128_range->setText(str);
+
+	snprintf(str, sizeof(str), "%0.1f LU", results[4]);
+	r128_peak->setText(str);
 }

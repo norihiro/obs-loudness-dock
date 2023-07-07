@@ -74,14 +74,22 @@ void loudness_destroy(loudness_t *loudness)
 
 void loudness_get(loudness_t *loudness, double results[5])
 {
+	double peak = 0.0;
+
 	pthread_mutex_lock(&loudness->mutex);
 
 	results[0] = 0.0; // TODO: Implement momentary loudness
 	ff_ebur128_loudness_shortterm(loudness->state, &results[1]);
 	ff_ebur128_loudness_global(loudness->state, &results[2]);
 	ff_ebur128_loudness_range(loudness->state, &results[3]);
-	results[4] = 0.0; // TODO: Implement it
-	// ff_ebur128_sample_peak(loudness->state, &results[4]);
+	for (size_t ch = 0; ch < loudness->state->channels; ch++) {
+		double peak_ch;
+		if (ff_ebur128_sample_peak(loudness->state, ch, &peak_ch) == 0) {
+			if (peak_ch > peak)
+				peak = peak_ch;
+		}
+	}
+	results[4] = obs_mul_to_db(peak);
 
 	pthread_mutex_unlock(&loudness->mutex);
 }

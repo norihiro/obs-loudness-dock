@@ -18,6 +18,7 @@ private:
 	QLabel *r128_short = nullptr;
 	QLabel *r128_integrated = nullptr;
 	QLabel *r128_range = nullptr;
+	QLabel *r128_peak = nullptr;
 
 private: /* for EBU R 128 processing */
 	loudness_t *loudness = nullptr;
