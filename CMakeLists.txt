@@ -29,7 +29,7 @@ find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui Charts)
 
 configure_file(
 	src/plugin-macros.h.in
-	../src/plugin-macros.generated.h
+	plugin-macros.generated.h
 )
 configure_file(
 	installer/installer-Windows.iss.in
@@ -47,7 +47,9 @@ configure_file(
 
 set(PLUGIN_SOURCES
 	src/plugin-main.c
+	src/loudness.c
 	src/loudness-dock.cpp
+	deps/libavfilter/ebur128.c
 )
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
@@ -62,6 +64,12 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	Qt::Charts
 )
 
+target_include_directories(${CMAKE_PROJECT_NAME}
+	PRIVATE
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_BINARY_DIR}
+)
+
 if(OS_WINDOWS)
 	# Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
 	if (MSVC)
@@ -73,6 +81,7 @@ endif()
 
 if(OS_LINUX)
 	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
+	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -Wl,--unresolved-symbols=report-all)
 	if(ENABLE_COVERAGE)
 		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
 		target_link_options(${PROJECT_NAME} PRIVATE -coverage)

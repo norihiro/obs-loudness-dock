@@ -18,14 +18,18 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include <obs-module.h>
+#include <obs-frontend-api.h>
 
 #include "plugin-macros.generated.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
+void *create_loudness_dock();
+
 bool obs_module_load(void)
 {
+	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
 	blog(LOG_INFO, "plugin loaded (version %s)", PLUGIN_VERSION);
 	return true;
 }
