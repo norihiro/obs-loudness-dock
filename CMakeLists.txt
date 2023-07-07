@@ -50,6 +50,7 @@ set(PLUGIN_SOURCES
 	src/loudness.c
 	src/loudness-dock.cpp
 	deps/libavfilter/ebur128.c
+	src/dock-compat.cpp
 )
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})

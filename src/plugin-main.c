@@ -27,6 +27,11 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 void *create_loudness_dock();
 
+#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(29, 1, 3)
+bool obs_frontend_add_dock_by_id_compat(const char *id, const char *title, void *widget);
+#define obs_frontend_add_dock_by_id obs_frontend_add_dock_by_id_compat
+#endif
+
 bool obs_module_load(void)
 {
 	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
