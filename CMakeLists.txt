@@ -25,7 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(libobs REQUIRED)
 find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
-find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui Charts)
+find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
 
 configure_file(
 	src/plugin-macros.h.in
@@ -61,7 +61,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	Qt::Widgets
 	Qt::Gui
 	Qt::GuiPrivate
-	Qt::Charts
 )
 
 target_include_directories(${CMAKE_PROJECT_NAME}
