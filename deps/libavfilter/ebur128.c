@@ -41,9 +41,8 @@
  * THE SOFTWARE.
 */
 
-#include <pthread.h>
-#include <errno.h>
 #include <obs-module.h>
+#include <util/threading.h>
 #include "deps/libavfilter/ebur128.h"
 
 #include <float.h>

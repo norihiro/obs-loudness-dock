@@ -18,7 +18,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 #include <obs-module.h>
-#include <pthread.h>
+#include <util/threading.h>
 #include "loudness.h"
 #include "deps/libavfilter/ebur128.h"
 #include "plugin-macros.generated.h"
