@@ -39,6 +39,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		return label;
 	};
 
+	r128_momentary = add_stat(obs_module_text("Label.Momentary"));
 	r128_short = add_stat(obs_module_text("Label.Short"));
 	r128_integrated = add_stat(obs_module_text("Label.Integrated"));
 	r128_range = add_stat(obs_module_text("Label.Range"));
@@ -107,6 +108,9 @@ void LoudnessDock::on_timer()
 		return;
 
 	loudness_get(loudness, results);
+
+	snprintf(str, sizeof(str), "%0.1f LUFS", results[0]);
+	r128_momentary->setText(str);
 
 	snprintf(str, sizeof(str), "%0.1f LUFS", results[1]);
 	r128_short->setText(str);
