@@ -1,0 +1,3 @@
+[submodule "deps/libebur128"]
+	path = deps/libebur128
+	url = https://github.com/jiixyj/libebur128.git

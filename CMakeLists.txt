@@ -27,6 +27,11 @@ find_package(obs-frontend-api REQUIRED)
 include(cmake/ObsPluginHelpers.cmake)
 find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
 
+find_package(PkgConfig QUIET)
+if(PKG_CONFIG_FOUND)
+	pkg_check_modules(PC_LIBEBUR128 libebur128)
+endif()
+
 configure_file(
 	src/plugin-macros.h.in
 	plugin-macros.generated.h
@@ -49,9 +54,12 @@ set(PLUGIN_SOURCES
 	src/plugin-main.c
 	src/loudness.c
 	src/loudness-dock.cpp
-	deps/libavfilter/ebur128.c
 	src/dock-compat.cpp
 )
+
+if(NOT PC_LIBEBUR128_FOUND)
+	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} deps/libebur128/ebur128/ebur128.c)
+endif()
 
 add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
@@ -64,6 +72,17 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 	Qt::GuiPrivate
 )
 
+if(PC_LIBEBUR128_FOUND)
+	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE ${PC_LIBEBUR128_CFLAGS})
+	target_link_libraries(${CMAKE_PROJECT_NAME} ${PC_LIBEBUR128_LIBRARIES})
+else()
+	target_include_directories(${CMAKE_PROJECT_NAME}
+		PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/deps/libebur128/ebur128
+		${CMAKE_CURRENT_SOURCE_DIR}/deps/libebur128/ebur128/queue
+	)
+endif()
+
 target_include_directories(${CMAKE_PROJECT_NAME}
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}
@@ -74,6 +93,7 @@ if(OS_WINDOWS)
 	# Enable Multicore Builds and disable FH4 (to not depend on VCRUNTIME140_1.DLL when building with VS2019)
 	if (MSVC)
 		add_definitions(/MP /d2FH4-)
+		add_definitions("-D_USE_MATH_DEFINES") # for M_PI
 	endif()
 
 	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)

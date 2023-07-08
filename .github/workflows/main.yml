@@ -46,6 +46,7 @@ jobs:
       - name: Build plugin
         run: |
           OBS_QT_VERSION_MAJOR=${{ steps.obsdeps.outputs.OBS_QT_VERSION_MAJOR }}
+          sudo apt install -y libebur128-1 libebur128-dev
           mkdir build
           cd build
           case ${{ matrix.obs }} in
@@ -201,10 +202,12 @@ jobs:
             27)
               (cd release/${PLUGIN_NAME} && ../../ci/macos/change-rpath.sh -obs ${{ matrix.obs }} -lib lib/ bin/${PLUGIN_NAME}.so)
               cp LICENSE release/${PLUGIN_NAME}/data/LICENSE-$PLUGIN_NAME
+              cp deps/libebur128/COPYING release/${PLUGIN_NAME}/data/LICENSE-libebur128
               ;;
             28)
               (cd release/${PLUGIN_NAME}.plugin/Contents && ../../../ci/macos/change-rpath.sh -obs 28 -lib lib/ MacOS/${PLUGIN_NAME})
               cp LICENSE release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-$PLUGIN_NAME
+              cp deps/libebur128/COPYING release/${PLUGIN_NAME}.plugin/Contents/Resources/LICENSE-libebur128
               ;;
           esac
 
