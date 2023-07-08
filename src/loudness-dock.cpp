@@ -109,6 +109,11 @@ void LoudnessDock::on_timer()
 
 	loudness_get(loudness, results);
 
+	for (auto &r : results) {
+		if (r < -192.0)
+			r = -HUGE_VAL;
+	}
+
 	snprintf(str, sizeof(str), "%0.1f LUFS", results[0]);
 	r128_momentary->setText(str);
 
