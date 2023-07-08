@@ -129,6 +129,11 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 
 void loudness_set_pause(loudness_t *loudness, bool paused)
 {
+	if (paused == loudness->paused)
+		return;
+
+	loudness->paused = paused;
+
 	if (paused) {
 		obs_remove_raw_audio_callback(loudness->track, audio_cb, loudness);
 	}
