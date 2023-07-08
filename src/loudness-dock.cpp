@@ -126,6 +126,6 @@ void LoudnessDock::on_timer()
 	snprintf(str, sizeof(str), "%0.1f LU", results[3]);
 	r128_range->setText(str);
 
-	snprintf(str, sizeof(str), "%0.1f LU", results[4]);
+	snprintf(str, sizeof(str), "%0.1f dB<sub>FS</sub>", results[4]);
 	r128_peak->setText(str);
 }
