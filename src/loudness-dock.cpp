@@ -101,7 +101,6 @@ void LoudnessDock::on_pause()
 
 void LoudnessDock::on_timer()
 {
-	char str[32];
 	double results[5];
 
 	if (!loudness)
@@ -114,18 +113,9 @@ void LoudnessDock::on_timer()
 			r = -HUGE_VAL;
 	}
 
-	snprintf(str, sizeof(str), "%0.1f LUFS", results[0]);
-	r128_momentary->setText(str);
-
-	snprintf(str, sizeof(str), "%0.1f LUFS", results[1]);
-	r128_short->setText(str);
-
-	snprintf(str, sizeof(str), "%0.1f LUFS", results[2]);
-	r128_integrated->setText(str);
-
-	snprintf(str, sizeof(str), "%0.1f LU", results[3]);
-	r128_range->setText(str);
-
-	snprintf(str, sizeof(str), "%0.1f dB<sub>FS</sub>", results[4]);
-	r128_peak->setText(str);
+	r128_momentary->setText(QString("%1 LUFS").arg(results[0], 2, 'f', 1));
+	r128_short->setText(QString("%1 LUFS").arg(results[1], 2, 'f', 1));
+	r128_integrated->setText(QString("%1 LUFS").arg(results[2], 2, 'f', 1));
+	r128_range->setText(QString("%1 LU").arg(results[3], 2, 'f', 1));
+	r128_peak->setText(QString("%1 dB<sub>FS</sub>").arg(results[4], 2, 'f', 1));
 }
