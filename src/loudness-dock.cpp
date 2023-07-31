@@ -63,8 +63,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	loudness = loudness_create(0);
 
 	QTimer *timer = new QTimer(this);
-	timer->setInterval(100);
-	timer->start(1000);
+	timer->start(100);
 	connect(timer, &QTimer::timeout, this, &LoudnessDock::on_timer);
 }
 
