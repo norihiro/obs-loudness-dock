@@ -80,6 +80,7 @@ extern "C" QWidget *create_loudness_dock()
 void LoudnessDock::on_reset()
 {
 	loudness_reset(loudness);
+	update_count = 0;
 }
 
 void LoudnessDock::on_pause()
@@ -96,25 +97,42 @@ void LoudnessDock::on_pause()
 	}
 
 	loudness_set_pause(loudness, paused);
+	update_count = 0;
 }
 
 void LoudnessDock::on_timer()
 {
+	uint32_t flags = LOUDNESS_GET_SHORT;
 	double results[5];
 
 	if (!loudness)
 		return;
 
-	loudness_get(loudness, results);
+	for (auto &r : results)
+		r = -HUGE_VAL;
+
+	if (update_count == 0)
+		flags |= LOUDNESS_GET_LONG;
+
+	if (update_count >= 9)
+		update_count = 0;
+	else
+		update_count++;
+
+	loudness_get(loudness, results, flags);
 
 	for (auto &r : results) {
 		if (r < -192.0)
 			r = -HUGE_VAL;
 	}
 
-	r128_momentary->setText(QString("%1 LUFS").arg(results[0], 2, 'f', 1));
-	r128_short->setText(QString("%1 LUFS").arg(results[1], 2, 'f', 1));
-	r128_integrated->setText(QString("%1 LUFS").arg(results[2], 2, 'f', 1));
-	r128_range->setText(QString("%1 LU").arg(results[3], 2, 'f', 1));
-	r128_peak->setText(QString("%1 dB<sub>FS</sub>").arg(results[4], 2, 'f', 1));
+	if (flags & LOUDNESS_GET_SHORT) {
+		r128_momentary->setText(QString("%1 LUFS").arg(results[0], 2, 'f', 1));
+		r128_short->setText(QString("%1 LUFS").arg(results[1], 2, 'f', 1));
+	}
+	if (flags & LOUDNESS_GET_LONG) {
+		r128_integrated->setText(QString("%1 LUFS").arg(results[2], 2, 'f', 1));
+		r128_range->setText(QString("%1 LU").arg(results[3], 2, 'f', 1));
+		r128_peak->setText(QString("%1 dB<sub>FS</sub>").arg(results[4], 2, 'f', 1));
+	}
 }

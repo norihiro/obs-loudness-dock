@@ -83,7 +83,7 @@ void loudness_destroy(loudness_t *loudness)
 static const char *name_loudness_get = "loudness_get";
 #endif
 
-void loudness_get(loudness_t *loudness, double results[5])
+void loudness_get(loudness_t *loudness, double results[5], uint32_t flags)
 {
 #ifdef ENABLE_PROFILE
 	profile_start(name_loudness_get);
@@ -91,11 +91,13 @@ void loudness_get(loudness_t *loudness, double results[5])
 
 	pthread_mutex_lock(&loudness->mutex);
 
-	if (loudness->state) {
-		double peak = 0.0;
-
+	if (loudness->state && (flags & LOUDNESS_GET_SHORT)) {
 		ebur128_loudness_momentary(loudness->state, &results[0]);
 		ebur128_loudness_shortterm(loudness->state, &results[1]);
+	}
+
+	if (loudness->state && (flags & LOUDNESS_GET_LONG)) {
+		double peak = 0.0;
 		ebur128_loudness_global(loudness->state, &results[2]);
 		ebur128_loudness_range(loudness->state, &results[3]);
 		for (size_t ch = 0; ch < loudness->state->channels; ch++) {

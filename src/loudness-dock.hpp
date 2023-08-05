@@ -23,6 +23,7 @@ private:
 
 private: /* for EBU R 128 processing */
 	loudness_t *loudness = nullptr;
+	uint32_t update_count = 0;
 
 private:
 	void on_reset();
