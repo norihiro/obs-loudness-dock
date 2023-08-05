@@ -133,6 +133,6 @@ void LoudnessDock::on_timer()
 	if (flags & LOUDNESS_GET_LONG) {
 		r128_integrated->setText(QString("%1 LUFS").arg(results[2], 2, 'f', 1));
 		r128_range->setText(QString("%1 LU").arg(results[3], 2, 'f', 1));
-		r128_peak->setText(QString("%1 dB<sub>FS</sub>").arg(results[4], 2, 'f', 1));
+		r128_peak->setText(QString("%1 dB<sub>TP</sub>").arg(results[4], 2, 'f', 1));
 	}
 }

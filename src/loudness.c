@@ -42,7 +42,7 @@ static bool init_state(loudness_t *loudness)
 	if (!obs_get_audio_info(&oai))
 		return false;
 
-	int mode = EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_LRA | EBUR128_MODE_SAMPLE_PEAK;
+	int mode = EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_LRA | EBUR128_MODE_TRUE_PEAK;
 	loudness->state = ebur128_init(get_audio_channels(oai.speakers), oai.samples_per_sec, mode);
 	if (!loudness->state) {
 		blog(LOG_ERROR, "Failed to initialize libebur128");
@@ -102,7 +102,7 @@ void loudness_get(loudness_t *loudness, double results[5], uint32_t flags)
 		ebur128_loudness_range(loudness->state, &results[3]);
 		for (size_t ch = 0; ch < loudness->state->channels; ch++) {
 			double peak_ch;
-			if (ebur128_sample_peak(loudness->state, ch, &peak_ch) == 0) {
+			if (ebur128_true_peak(loudness->state, ch, &peak_ch) == 0) {
 				if (peak_ch > peak)
 					peak = peak_ch;
 			}
