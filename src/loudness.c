@@ -79,8 +79,16 @@ void loudness_destroy(loudness_t *loudness)
 	bfree(loudness);
 }
 
+#ifdef ENABLE_PROFILE
+static const char *name_loudness_get = "loudness_get";
+#endif
+
 void loudness_get(loudness_t *loudness, double results[5])
 {
+#ifdef ENABLE_PROFILE
+	profile_start(name_loudness_get);
+#endif
+
 	pthread_mutex_lock(&loudness->mutex);
 
 	if (loudness->state) {
@@ -101,10 +109,22 @@ void loudness_get(loudness_t *loudness, double results[5])
 	}
 
 	pthread_mutex_unlock(&loudness->mutex);
+
+#ifdef ENABLE_PROFILE
+	profile_end(name_loudness_get);
+#endif
 }
+
+#ifdef ENABLE_PROFILE
+static const char *name_audio_cb = "loudness-audio_cb";
+#endif
 
 void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 {
+#ifdef ENABLE_PROFILE
+	profile_start(name_audio_cb);
+#endif
+
 	UNUSED_PARAMETER(mix_idx);
 	loudness_t *loudness = param;
 
@@ -125,6 +145,10 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 	}
 
 	pthread_mutex_unlock(&loudness->mutex);
+
+#ifdef ENABLE_PROFILE
+	profile_end(name_audio_cb);
+#endif
 }
 
 void loudness_set_pause(loudness_t *loudness, bool paused)

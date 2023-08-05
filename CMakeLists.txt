@@ -83,6 +83,11 @@ else()
 	)
 endif()
 
+option(ENABLE_PROFILE "Enable profile" OFF)
+if(ENABLE_PROFILE)
+	target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE "-DENABLE_PROFILE")
+endif()
+
 target_include_directories(${CMAKE_PROJECT_NAME}
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}
