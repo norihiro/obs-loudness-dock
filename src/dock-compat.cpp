@@ -9,7 +9,7 @@
 
 OBSDock::OBSDock(QMainWindow *main) : QDockWidget(main) {}
 
-#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(29, 1, 3)
+#if LIBOBS_API_VER <= MAKE_SEMANTIC_VERSION(29, 1, 3)
 extern "C"
 bool obs_frontend_add_dock_by_id_compat(const char *id, const char *title, void *widget)
 {
