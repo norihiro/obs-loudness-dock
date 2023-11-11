@@ -21,6 +21,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QTimer>
+#include <QMainWindow>
+#include <obs-frontend-api.h>
 #include "plugin-macros.generated.h"
 #include "loudness-dock.hpp"
 
@@ -74,7 +76,8 @@ LoudnessDock::~LoudnessDock()
 
 extern "C" QWidget *create_loudness_dock()
 {
-	return static_cast<QWidget *>(new LoudnessDock());
+	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
+	return static_cast<QWidget *>(new LoudnessDock(main_window));
 }
 
 void LoudnessDock::on_reset()
