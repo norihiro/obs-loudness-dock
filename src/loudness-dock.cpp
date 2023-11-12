@@ -1,5 +1,5 @@
 /*
-OBS Main View Source Plugin
+OBS Loudness Dock
 Copyright (C) 2023 Norihiro Kamae <norihiro@nagater.net>
 
 This program is free software; you can redistribute it and/or modify
