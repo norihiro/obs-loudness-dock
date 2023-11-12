@@ -71,6 +71,9 @@ loudness_t *loudness_create(int track)
 
 void loudness_destroy(loudness_t *loudness)
 {
+	if (!loudness)
+		return;
+
 	obs_remove_raw_audio_callback(loudness->track, audio_cb, loudness);
 	if (loudness->state)
 		ebur128_destroy(&loudness->state);
