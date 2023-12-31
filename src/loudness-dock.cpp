@@ -56,11 +56,11 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	QHBoxLayout *buttonLayout = new QHBoxLayout;
 	buttonLayout->addStretch();
 
-	pauseButton = new QPushButton(obs_module_text("Button.Pause"));
+	pauseButton = new QPushButton(obs_module_text("Button.Pause"), this);
 	buttonLayout->addWidget(pauseButton);
 	connect(pauseButton, &QPushButton::clicked, this, &LoudnessDock::on_pause_resume);
 
-	QPushButton *resetButton = new QPushButton(obs_module_text("Button.Reset"));
+	QPushButton *resetButton = new QPushButton(obs_module_text("Button.Reset"), this);
 	buttonLayout->addWidget(resetButton);
 	connect(resetButton, &QPushButton::clicked, this, &LoudnessDock::on_reset);
 
