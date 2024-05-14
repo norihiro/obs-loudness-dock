@@ -10,6 +10,7 @@ set(MACOS_BUNDLEID "net.nagater.obs-loudness-dock")
 set(ID_PREFIX "net.nagater.obs-loudness-dock.")
 set(MACOS_PACKAGE_UUID "4B74E0A4-7591-425D-83E4-9A56DD6102B9")
 set(MACOS_INSTALLER_UUID "DAC8DE7B-1012-4EEB-893B-595E78F3F9A5")
+set(PLUGIN_URL "https://obsproject.com/forum/resources/loudness-dock.1751/")
 
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
