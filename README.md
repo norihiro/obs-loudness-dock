@@ -1,4 +1,4 @@
-# OBS Loudness Dock
+# Loudness Dock plugin for OBS Studio
 
 ## Introduction
 
