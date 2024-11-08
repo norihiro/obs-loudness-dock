@@ -1,0 +1,2 @@
+simpleobsws
+discord.py
