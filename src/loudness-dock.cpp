@@ -23,11 +23,17 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QTimer>
 #include <QMainWindow>
 #include <obs-frontend-api.h>
+#include <obs-websocket-api.h>
 #include "plugin-macros.generated.h"
 #include "loudness-dock.hpp"
 
+extern "C" obs_websocket_vendor ws_vendor;
+
 LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 {
+	for (auto &r : results)
+		r = -HUGE_VAL;
+
 	QVBoxLayout *mainLayout = new QVBoxLayout();
 
 	QGridLayout *topLayout = new QGridLayout();
@@ -52,7 +58,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 	pauseButton = new QPushButton(obs_module_text("Button.Pause"));
 	buttonLayout->addWidget(pauseButton);
-	connect(pauseButton, &QPushButton::clicked, this, &LoudnessDock::on_pause);
+	connect(pauseButton, &QPushButton::clicked, this, &LoudnessDock::on_pause_resume);
 
 	QPushButton *resetButton = new QPushButton(obs_module_text("Button.Reset"));
 	buttonLayout->addWidget(resetButton);
@@ -67,10 +73,25 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	QTimer *timer = new QTimer(this);
 	timer->start(100);
 	connect(timer, &QTimer::timeout, this, &LoudnessDock::on_timer);
+
+	/*
+	 * Register an obs-websocket request handler. This assumes `LoudnessDock` is instantiated only once.
+	 */
+	if (ws_vendor) {
+		obs_websocket_vendor_register_request(ws_vendor, "get_loudness", ws_get_loudness_cb, this);
+		obs_websocket_vendor_register_request(ws_vendor, "reset", ws_reset_cb, this);
+		obs_websocket_vendor_register_request(ws_vendor, "pause", ws_pause_cb, this);
+	}
 }
 
 LoudnessDock::~LoudnessDock()
 {
+	if (ws_vendor) {
+		obs_websocket_vendor_unregister_request(ws_vendor, "get_loudness");
+		obs_websocket_vendor_unregister_request(ws_vendor, "reset");
+		obs_websocket_vendor_unregister_request(ws_vendor, "pause");
+	}
+
 	loudness_destroy(loudness);
 }
 
@@ -86,33 +107,31 @@ void LoudnessDock::on_reset()
 	update_count = 0;
 }
 
-void LoudnessDock::on_pause()
+void LoudnessDock::on_pause(bool pause_)
 {
-	if (paused) {
-		if (pauseButton)
-			pauseButton->setText(obs_module_text("Button.Pause"));
-		paused = false;
-	}
-	else {
-		if (pauseButton)
+	if (pauseButton) {
+		if (pause_)
 			pauseButton->setText(obs_module_text("Button.Resume"));
-		paused = true;
+		else
+			pauseButton->setText(obs_module_text("Button.Pause"));
 	}
+	paused = pause_;
 
-	loudness_set_pause(loudness, paused);
+	loudness_set_pause(loudness, pause_);
 	update_count = 0;
+}
+
+void LoudnessDock::on_pause_resume()
+{
+	on_pause(!paused);
 }
 
 void LoudnessDock::on_timer()
 {
 	uint32_t flags = LOUDNESS_GET_SHORT;
-	double results[5];
 
 	if (!loudness)
 		return;
-
-	for (auto &r : results)
-		r = -HUGE_VAL;
 
 	if (update_count == 0)
 		flags |= LOUDNESS_GET_LONG;
@@ -122,12 +141,16 @@ void LoudnessDock::on_timer()
 	else
 		update_count++;
 
+	std::unique_lock<std::mutex> lock(results_mutex);
+
 	loudness_get(loudness, results, flags);
 
 	for (auto &r : results) {
 		if (r < -192.0)
 			r = -HUGE_VAL;
 	}
+
+	lock.unlock();
 
 	if (flags & LOUDNESS_GET_SHORT) {
 		r128_momentary->setText(QString("%1 LUFS").arg(results[0], 2, 'f', 1));
@@ -138,4 +161,35 @@ void LoudnessDock::on_timer()
 		r128_range->setText(QString("%1 LU").arg(results[3], 2, 'f', 1));
 		r128_peak->setText(QString("%1 dB<sub>TP</sub>").arg(results[4], 2, 'f', 1));
 	}
+}
+
+void LoudnessDock::ws_get_loudness_cb(obs_data_t *, obs_data_t *response, void *priv_data)
+{
+	auto ld = static_cast<LoudnessDock *>(priv_data);
+	ld->ws_get_loudness_cb(response);
+}
+
+void LoudnessDock::ws_get_loudness_cb(obs_data_t *response)
+{
+	std::unique_lock<std::mutex> lock(results_mutex);
+	obs_data_set_double(response, "momentary", results[0]);
+	obs_data_set_double(response, "short", results[1]);
+	obs_data_set_double(response, "integrated", results[2]);
+	obs_data_set_double(response, "range", results[3]);
+	obs_data_set_double(response, "peak", results[4]);
+}
+
+void LoudnessDock::ws_reset_cb(obs_data_t *, obs_data_t *, void *priv_data)
+{
+	auto ld = static_cast<LoudnessDock *>(priv_data);
+	ld->on_reset();
+}
+
+void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_data)
+{
+	auto ld = static_cast<LoudnessDock *>(priv_data);
+	bool p = true;
+	if (obs_data_has_user_value(request, "pause") && !obs_data_get_bool(request, "pause"))
+		p = false;
+	ld->on_pause(p);
 }

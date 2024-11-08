@@ -19,11 +19,14 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <obs-module.h>
 #include <obs-frontend-api.h>
+#include <obs-websocket-api.h>
 
 #include "plugin-macros.generated.h"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
+
+obs_websocket_vendor ws_vendor = NULL;
 
 void *create_loudness_dock();
 
@@ -34,9 +37,14 @@ bool obs_frontend_add_dock_by_id_compat(const char *id, const char *title, void 
 
 bool obs_module_load(void)
 {
-	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
 	blog(LOG_INFO, "plugin loaded (version %s)", PLUGIN_VERSION);
 	return true;
+}
+
+void obs_module_post_load(void)
+{
+	ws_vendor = obs_websocket_register_vendor(PLUGIN_NAME);
+	obs_frontend_add_dock_by_id(ID_PREFIX ".main", obs_module_text("LoudnessDock.Title"), create_loudness_dock());
 }
 
 void obs_module_unload()
