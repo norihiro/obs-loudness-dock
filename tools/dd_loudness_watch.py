@@ -34,7 +34,7 @@ class MyOBSWSClient:
         except:
             print(f'Info: {self.args.obsws}: Connection failed. Will retry later')
 
-    async def ws_send_request(self, req, data, retry=2):
+    async def ws_send_request(self, req, data=None, retry=2):
         'Send a request to obs-websocket'
         while retry > 0:
             if not self.obsws:
@@ -51,6 +51,28 @@ class MyOBSWSClient:
 
             retry -= 1
 
+    async def check_alert_cond(self):
+        '''
+        Check the condition for if_streaming and if_recording
+        If both if_streaming and if_recording are set,
+        the alert is disabled only if both streaming and recording are inactive.
+        '''
+
+        if self.args.if_streaming:
+            res = await self.ws_send_request('GetStreamStatus')
+            if res and res['outputActive']:
+                return True
+
+        if self.args.if_recording:
+            res = await self.ws_send_request('GetRecordStatus')
+            if res and res['outputActive']:
+                return True
+
+        if self.args.if_streaming or self.args.if_recording:
+            return False
+
+        return True
+
     async def run_loudness_watcher(self, cb):
         'A loop method checking the loudness'
 
@@ -61,6 +83,11 @@ class MyOBSWSClient:
 
         while True:
             await asyncio.sleep(3)
+
+            if not await self.check_alert_cond():
+                self.last_exceed = datetime.now()
+                continue
+
             res = await self.ws_send_request(
                     'CallVendorRequest',
                     {
@@ -216,6 +243,10 @@ def get_args():
                         help='Threshold in LUFS')
     parser.add_argument('--wait-time', action='store', type=float, default=10.0,
                         help='Time in second that the lower loudness continues for')
+    parser.add_argument('--if-streaming', action='store_true', default=False,
+                        help='Alert only while streaming')
+    parser.add_argument('--if-recording', action='store_true', default=False,
+                        help='Alert only while recording')
 
     # arguments for messaging verbosity
     parser.add_argument('--message-current', action='store_true', default=False,
