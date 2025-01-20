@@ -189,7 +189,8 @@ class MyClient(discord.Client):
                 try:
                     await self.msg_too_low.edit(content = text)
                 except:
-                    self.msg_too_low = None
+                    pass
+                self.msg_too_low = None
 
             if self.args.message_current:
                 text = f'Current loudness: {short_str}'
