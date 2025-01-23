@@ -161,6 +161,8 @@ class MyClient(discord.Client):
             await self.channel.send(content = self.args.send_text)
 
     async def _update_msg_too_low(self, text, force_post=False):
+        if self.args.verbose >= 1:
+            print(f'Sending message "{text}"')
         if force_post or not self.msg_too_low:
             self.msg_too_low = await self.channel.send(content = text)
         else:
@@ -176,6 +178,9 @@ class MyClient(discord.Client):
         threshold_str = f'{self.args.threshold:0.1f} LUFS'
         duration_str = f'{int(low_duration_s)} s'
         short_str = f'{short_lufs:+0.0f} LUFS'
+
+        if self.args.verbose >= 2:
+            print(f'Loudness: {short_str} Duration: {duration_str}{" too low" if too_low else ""}')
 
         if too_low:
             if self.msg_current:
@@ -255,6 +260,10 @@ def get_args():
     # arguments for messaging verbosity
     parser.add_argument('--message-current', action='store_true', default=False,
                         help='Send current loudness')
+
+    # arguments for misc
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        help='Increase verbosity level')
 
     args = parser.parse_args()
     if args.send_text and args.send_text=='-':
