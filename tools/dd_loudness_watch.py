@@ -125,6 +125,7 @@ class MyClient(discord.Client):
         self.n_too_low = 0
         self.msg_too_low = None
         self.msg_current = None
+        self._duration_last_sent = 0
         self.channel = None
         self._on_ready_called = False
 
@@ -159,37 +160,39 @@ class MyClient(discord.Client):
             print(f'Info: Sending text: "{self.args.send_text}"')
             await self.channel.send(content = self.args.send_text)
 
+    async def _update_msg_too_low(self, text, force_post=False):
+        if force_post or not self.msg_too_low:
+            self.msg_too_low = await self.channel.send(content = text)
+        else:
+            try:
+                await self.msg_too_low.edit(content = text)
+            except:
+                self.msg_too_low = None
+
     async def on_loudness(self, too_low=False, short_lufs=None, low_duration_s=None):
         'Callback method when the loudness arrives'
         # pylint: disable=R0912 # Fix it someday later.
 
         threshold_str = f'{self.args.threshold:0.1f} LUFS'
         duration_str = f'{int(low_duration_s)} s'
-        short_str = f'{short_lufs:+0.1f} LUFS'
+        short_str = f'{short_lufs:+0.0f} LUFS'
 
         if too_low:
             if self.msg_current:
                 await self.msg_current.delete()
                 self.msg_current = None
 
-            text = f'Too low loudness (< {threshold_str}) continues for {duration_str}.\n' + \
-                   f'Current loudness: {short_str}'
-            if self.n_too_low == 0:
-                self.msg_too_low = await self.channel.send(content = text)
-            elif self.msg_too_low:
-                try:
-                    await self.msg_too_low.edit(content = text)
-                except:
-                    self.msg_too_low = None
+            if low_duration_s > self._duration_last_sent * 2:
+                text = f'Too low loudness (< {threshold_str}) continues for {duration_str}.\n' + \
+                       f'Current loudness: {short_str}'
+                await self._update_msg_too_low(text, force_post = self.n_too_low == 0)
+                self._duration_last_sent = low_duration_s
 
         else:
             if self.msg_too_low:
                 text = self.msg_too_low.content + \
                        f'\n--> Resolved. Current loudness: {short_str}'
-                try:
-                    await self.msg_too_low.edit(content = text)
-                except:
-                    pass
+                await self._update_msg_too_low(text)
                 self.msg_too_low = None
 
             if self.args.message_current:
