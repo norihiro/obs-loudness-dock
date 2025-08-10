@@ -55,6 +55,7 @@ set(PLUGIN_SOURCES
 	src/plugin-main.c
 	src/loudness.c
 	src/loudness-dock.cpp
+	src/meter.cpp
 	src/dock-compat.cpp
 )
 
