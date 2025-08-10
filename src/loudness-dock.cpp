@@ -26,6 +26,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <obs-websocket-api.h>
 #include "plugin-macros.generated.h"
 #include "loudness-dock.hpp"
+#include "meter.hpp"
 
 extern "C" obs_websocket_vendor ws_vendor;
 
@@ -39,19 +40,28 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	QGridLayout *topLayout = new QGridLayout();
 
 	int row = 0;
-	auto add_stat = [&](const char *str) {
+	auto add_stat = [&](const char *str, QLabel **valueLabel, SingleMeter **meter = nullptr) {
 		QLabel *label = new QLabel(str, this);
 		topLayout->addWidget(label, row, 0);
-		label = new QLabel("-", this);
-		topLayout->addWidget(label, row++, 1);
-		return label;
+
+		if (valueLabel) {
+			*valueLabel = new QLabel("-", this);
+			topLayout->addWidget(*valueLabel, row, 1);
+		}
+
+		if (meter) {
+			*meter = new SingleMeter(this);
+			topLayout->addWidget(*meter, row, 2);
+		}
+
+		row++;
 	};
 
-	r128_momentary = add_stat(obs_module_text("Label.Momentary"));
-	r128_short = add_stat(obs_module_text("Label.Short"));
-	r128_integrated = add_stat(obs_module_text("Label.Integrated"));
-	r128_range = add_stat(obs_module_text("Label.Range"));
-	r128_peak = add_stat(obs_module_text("Label.Peak"));
+	add_stat(obs_module_text("Label.Momentary"), &r128_momentary, &meter_momentary);
+	add_stat(obs_module_text("Label.Short"), &r128_short, &meter_short);
+	add_stat(obs_module_text("Label.Integrated"), &r128_integrated, &meter_integrated);
+	add_stat(obs_module_text("Label.Range"), &r128_range);
+	add_stat(obs_module_text("Label.Peak"), &r128_peak);
 
 	QHBoxLayout *buttonLayout = new QHBoxLayout;
 	buttonLayout->addStretch();
@@ -155,11 +165,16 @@ void LoudnessDock::on_timer()
 	if (flags & LOUDNESS_GET_SHORT) {
 		r128_momentary->setText(QStringLiteral("%1 LUFS").arg(results[0], 2, 'f', 1));
 		r128_short->setText(QStringLiteral("%1 LUFS").arg(results[1], 2, 'f', 1));
+
+		meter_momentary->setLevel(results[0]);
+		meter_short->setLevel(results[1]);
 	}
 	if (flags & LOUDNESS_GET_LONG) {
 		r128_integrated->setText(QStringLiteral("%1 LUFS").arg(results[2], 2, 'f', 1));
 		r128_range->setText(QStringLiteral("%1 LU").arg(results[3], 2, 'f', 1));
 		r128_peak->setText(QStringLiteral("%1 dB<sub>TP</sub>").arg(results[4], 2, 'f', 1));
+
+		meter_integrated->setLevel(results[2]);
 	}
 }
 
