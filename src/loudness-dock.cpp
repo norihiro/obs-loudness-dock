@@ -39,6 +39,8 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 	QGridLayout *topLayout = new QGridLayout();
 
+	topLayout->setColumnStretch(2, 1);
+
 	int row = 0;
 	auto add_stat = [&](const char *str, QLabel **valueLabel, SingleMeter **meter = nullptr) {
 		QLabel *label = new QLabel(str, this);
@@ -47,6 +49,10 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		if (valueLabel) {
 			*valueLabel = new QLabel("-", this);
 			topLayout->addWidget(*valueLabel, row, 1);
+
+			QFontMetrics metrics((*valueLabel)->font());
+			QRect bounds = metrics.boundingRect(QStringLiteral("%1 LUFS").arg(-199.0, 2, 'f', 1));
+			(*valueLabel)->setMinimumWidth(bounds.width());
 		}
 
 		if (meter) {
