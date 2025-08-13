@@ -45,7 +45,9 @@ def _main():
             'requestData': {},
         })
         for field in ('momentary', 'short', 'integrated', 'range', 'peak'):
-            value = res.response_data[field] or float('-inf')
+            value = res.response_data[field]
+            if value is None:
+                value = float('-inf')
             print(f'{field}: {value:.1f}')
 
 
