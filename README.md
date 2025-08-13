@@ -13,3 +13,8 @@ These loudness values will be displayed.
 
 ## Build flow
 See [main.yml](.github/workflows/main.yml) for the exact build flow.
+
+## API
+
+This plugin support API through obs-websocket.
+See [`get_loudness.py`](example/get_loudness.py) for example.
