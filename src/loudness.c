@@ -1,5 +1,5 @@
 /*
-OBS Loudness Dock
+Loudness Dock for OBS Studio
 Copyright (C) 2023 Norihiro Kamae <norihiro@nagater.net>
 
 This program is free software; you can redistribute it and/or modify
