@@ -56,6 +56,8 @@ set(PLUGIN_SOURCES
 	src/loudness.c
 	src/loudness-dock.cpp
 	src/meter.cpp
+	src/config-dialog.cpp
+	src/config-dialog-table-delegate.cpp
 	src/dock-compat.cpp
 )
 
