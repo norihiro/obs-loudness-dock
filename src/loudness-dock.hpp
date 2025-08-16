@@ -23,6 +23,10 @@ private:
 	QLabel *r128_range = nullptr;
 	QLabel *r128_peak = nullptr;
 
+	class SingleMeter *meter_momentary = nullptr;
+	class SingleMeter *meter_short = nullptr;
+	class SingleMeter *meter_integrated = nullptr;
+
 	std::mutex results_mutex;
 	double results[5];
 
