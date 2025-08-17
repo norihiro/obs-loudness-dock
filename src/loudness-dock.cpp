@@ -20,15 +20,95 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <obs-module.h>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QVariant>
 #include <QTimer>
 #include <QMainWindow>
 #include <obs-frontend-api.h>
 #include <obs-websocket-api.h>
+#include <util/config-file.h>
 #include "plugin-macros.generated.h"
 #include "loudness-dock.hpp"
+#include "config-dialog.hpp"
 #include "meter.hpp"
 
+#define CFG "LoudnessDock"
+
 extern "C" obs_websocket_vendor ws_vendor;
+
+static loudness_dock_config_s load_config()
+{
+	loudness_dock_config_s cfg;
+
+	config_t *pc = obs_frontend_get_profile_config();
+
+	uint32_t n_colors = config_get_uint(pc, CFG, "n_colors");
+	if (!n_colors) {
+		n_colors = 3;
+
+		cfg.bar_fg_colors.resize(3);
+		cfg.bar_fg_colors[0] = 0x00FF0000;
+		cfg.bar_fg_colors[1] = 0x0000FF00;
+		cfg.bar_fg_colors[2] = 0x000000FF;
+
+		cfg.bar_bg_colors.resize(3);
+		cfg.bar_bg_colors[0] = 0x00550000;
+		cfg.bar_bg_colors[1] = 0x00005500;
+		cfg.bar_bg_colors[2] = 0x00000055;
+
+		cfg.bar_thresholds.resize(2);
+		cfg.bar_thresholds[0] = -23.0;
+		cfg.bar_thresholds[1] = -14.0;
+	}
+	else {
+		cfg.bar_fg_colors.resize(n_colors);
+		cfg.bar_bg_colors.resize(n_colors);
+		cfg.bar_thresholds.resize(n_colors - 1);
+
+		for (uint32_t i = 0; i < n_colors; i++) {
+			char name[32];
+			snprintf(name, sizeof(name), "color.fg.%d", i);
+			cfg.bar_fg_colors[i] = config_get_uint(pc, CFG, name);
+
+			snprintf(name, sizeof(name), "color.bg.%d", i);
+			cfg.bar_bg_colors[i] = config_get_uint(pc, CFG, name);
+		}
+
+		for (uint32_t i = 0; i < n_colors - 1; i++) {
+			char name[32];
+			snprintf(name, sizeof(name), "threshold.%d", i);
+			cfg.bar_thresholds[i] = (float)config_get_double(pc, CFG, name);
+		}
+	}
+
+	return cfg;
+}
+
+static void save_config(const loudness_dock_config_s &cfg)
+{
+	config_t *pc = obs_frontend_get_profile_config();
+
+	config_set_uint(pc, CFG, "n_colors", cfg.bar_fg_colors.size());
+
+	for (uint32_t i = 0; i < cfg.bar_fg_colors.size(); i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "color.fg.%d", i);
+		config_set_uint(pc, CFG, name, cfg.bar_fg_colors[i]);
+	}
+
+	for (uint32_t i = 0; i < cfg.bar_bg_colors.size(); i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "color.bg.%d", i);
+		config_set_uint(pc, CFG, name, cfg.bar_bg_colors[i]);
+	}
+
+	for (uint32_t i = 0; i < cfg.bar_thresholds.size(); i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "threshold.%d", i);
+		config_set_double(pc, CFG, name, cfg.bar_thresholds[i]);
+	}
+
+	config_save_safe(pc, "tmp", nullptr);
+}
 
 LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 {
@@ -80,9 +160,22 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	buttonLayout->addWidget(resetButton);
 	connect(resetButton, &QPushButton::clicked, this, &LoudnessDock::on_reset);
 
+	QPushButton *configButton = new QPushButton(this);
+	if (obs_get_version() >= MAKE_SEMANTIC_VERSION(31, 0, 0))
+		configButton->setProperty("class", "btn-tool icon-gear");
+	else
+		configButton->setText(obs_module_text("Button.Configuration"));
+	buttonLayout->addWidget(configButton);
+	connect(configButton, &QPushButton::clicked, this, &LoudnessDock::on_config);
+
 	mainLayout->addLayout(topLayout);
 	mainLayout->addLayout(buttonLayout);
 	setLayout(mainLayout);
+
+	auto cfg = load_config();
+	apply_move_config(cfg);
+
+	obs_frontend_add_event_callback(LoudnessDock::on_frontend_event, this);
 
 	loudness = loudness_create(0);
 
@@ -102,6 +195,8 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 LoudnessDock::~LoudnessDock()
 {
+	obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
+
 	if (ws_vendor) {
 		obs_websocket_vendor_unregister_request(ws_vendor, "get_loudness");
 		obs_websocket_vendor_unregister_request(ws_vendor, "reset");
@@ -184,6 +279,76 @@ void LoudnessDock::on_timer()
 	}
 }
 
+void LoudnessDock::on_config()
+{
+	if (dialog) {
+		delete dialog;
+	}
+
+	dialog = new ConfigDialog(config, this);
+	connect(dialog, &ConfigDialog::changed, this, &LoudnessDock::on_config_changed);
+	dialog->setAttribute(Qt::WA_DeleteOnClose);
+	dialog->show();
+}
+
+void LoudnessDock::on_config_changed()
+{
+	if (!dialog) {
+		blog(LOG_ERROR, "on_config_changed: no dialog");
+		return;
+	}
+
+	loudness_dock_config_s cfg = dialog->getConfig();
+
+	apply_move_config(cfg);
+
+	save_config(config);
+}
+
+void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
+{
+	if (cfg.bar_thresholds.size() + 1 != cfg.bar_fg_colors.size()) {
+		size_t n_colors;
+		if (cfg.bar_thresholds.size() <= 0 || cfg.bar_fg_colors.size() <= 1)
+			n_colors = 1;
+		else
+			n_colors = std::min(cfg.bar_thresholds.size() + 1, cfg.bar_fg_colors.size());
+
+		blog(LOG_ERROR, "bar_thresholds has %zu members, bar_fg_colors has %zu members. Resizing to %zu",
+		     cfg.bar_thresholds.size(), cfg.bar_fg_colors.size(), n_colors);
+
+		cfg.bar_thresholds.resize(n_colors - 1);
+		cfg.bar_fg_colors.resize(n_colors);
+	}
+
+	if (cfg.bar_bg_colors.size() < cfg.bar_fg_colors.size()) {
+		blog(LOG_ERROR, "bar_bg_colors has %zu members, where expected %zu. Resizing.",
+		     cfg.bar_bg_colors.size(), cfg.bar_fg_colors.size());
+		for (size_t i = cfg.bar_bg_colors.size(); i < cfg.bar_fg_colors.size(); i++) {
+			uint32_t c = cfg.bar_fg_colors[i];
+			uint32_t bg = (c & 0xFEFEFE) >> 1;
+			cfg.bar_bg_colors.push_back(bg);
+		}
+	}
+
+	/* Now, the sizes of bar_thresholds, bar_fg_colors, and bar_bg_colors are consistent. */
+
+	SingleMeter *meters[] = {
+		meter_momentary,
+		meter_short,
+		meter_integrated,
+	};
+
+	for (SingleMeter *meter : meters) {
+		if (!meter)
+			continue;
+		meter->setColors(cfg.bar_thresholds.data(), cfg.bar_fg_colors.data(), cfg.bar_bg_colors.data(),
+				 cfg.bar_fg_colors.size());
+	}
+
+	config = std::move(cfg);
+}
+
 void LoudnessDock::ws_get_loudness_cb(obs_data_t *, obs_data_t *response, void *priv_data)
 {
 	auto ld = static_cast<LoudnessDock *>(priv_data);
@@ -213,4 +378,18 @@ void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_dat
 	if (obs_data_has_user_value(request, "pause") && !obs_data_get_bool(request, "pause"))
 		p = false;
 	ld->on_pause(p);
+}
+
+void LoudnessDock::on_frontend_event(enum obs_frontend_event event)
+{
+	if (event == OBS_FRONTEND_EVENT_PROFILE_CHANGED) {
+		auto cfg = load_config();
+		apply_move_config(cfg);
+	}
+}
+
+void LoudnessDock::on_frontend_event(enum obs_frontend_event event, void *data)
+{
+	auto ld = static_cast<LoudnessDock *>(data);
+	ld->on_frontend_event(event);
 }

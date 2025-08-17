@@ -2,8 +2,11 @@
 #include <QFrame>
 #include <QPushButton>
 #include <QLabel>
+#include <QPointer>
 #include <mutex>
+#include <obs-frontend-api.h>
 #include "loudness.h"
+#include "config.hpp"
 #include "obs.h"
 
 class LoudnessDock : public QFrame {
@@ -27,6 +30,10 @@ private:
 	class SingleMeter *meter_short = nullptr;
 	class SingleMeter *meter_integrated = nullptr;
 
+	loudness_dock_config_s config;
+
+	QPointer<class ConfigDialog> dialog;
+
 	std::mutex results_mutex;
 	double results[5];
 
@@ -40,9 +47,16 @@ private:
 	void on_resume();
 	void on_pause_resume();
 	void on_timer();
+	void on_config();
+	void on_config_changed();
+	void on_frontend_event(enum obs_frontend_event event);
+
+	void apply_move_config(loudness_dock_config_s &cfg);
 
 	static void ws_get_loudness_cb(obs_data_t *, obs_data_t *, void *);
 	void ws_get_loudness_cb(obs_data_t *);
 	static void ws_reset_cb(obs_data_t *, obs_data_t *, void *);
 	static void ws_pause_cb(obs_data_t *, obs_data_t *, void *);
+
+	static void on_frontend_event(enum obs_frontend_event event, void *);
 };
