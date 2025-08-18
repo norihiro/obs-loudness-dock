@@ -368,7 +368,7 @@ void LoudnessDock::ws_get_loudness_cb(obs_data_t *response)
 void LoudnessDock::ws_reset_cb(obs_data_t *, obs_data_t *, void *priv_data)
 {
 	auto ld = static_cast<LoudnessDock *>(priv_data);
-	ld->on_reset();
+	QMetaObject::invokeMethod(ld, [=]() { ld->on_reset(); }, Qt::QueuedConnection);
 }
 
 void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_data)
@@ -377,7 +377,7 @@ void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_dat
 	bool p = true;
 	if (obs_data_has_user_value(request, "pause") && !obs_data_get_bool(request, "pause"))
 		p = false;
-	ld->on_pause(p);
+	QMetaObject::invokeMethod(ld, [=]() { ld->on_pause(p); }, Qt::QueuedConnection);
 }
 
 void LoudnessDock::on_frontend_event(enum obs_frontend_event event)
