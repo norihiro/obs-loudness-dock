@@ -30,6 +30,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "loudness-dock.hpp"
 #include "config-dialog.hpp"
 #include "meter.hpp"
+#include "utils.hpp"
 
 #define CFG "LoudnessDock"
 
@@ -37,6 +38,8 @@ extern "C" obs_websocket_vendor ws_vendor;
 
 static loudness_dock_config_s load_config()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	loudness_dock_config_s cfg;
 
 	config_t *pc = obs_frontend_get_profile_config();
@@ -85,6 +88,8 @@ static loudness_dock_config_s load_config()
 
 static void save_config(const loudness_dock_config_s &cfg)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	config_t *pc = obs_frontend_get_profile_config();
 
 	config_set_uint(pc, CFG, "n_colors", cfg.bar_fg_colors.size());
@@ -112,6 +117,8 @@ static void save_config(const loudness_dock_config_s &cfg)
 
 LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	for (auto &r : results)
 		r = -HUGE_VAL;
 
@@ -195,6 +202,8 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 LoudnessDock::~LoudnessDock()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
 
 	if (ws_vendor) {
@@ -208,18 +217,24 @@ LoudnessDock::~LoudnessDock()
 
 extern "C" QWidget *create_loudness_dock()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	const auto main_window = static_cast<QMainWindow *>(obs_frontend_get_main_window());
 	return static_cast<QWidget *>(new LoudnessDock(main_window));
 }
 
 void LoudnessDock::on_reset()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	loudness_reset(loudness);
 	update_count = 0;
 }
 
 void LoudnessDock::on_pause(bool pause_)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	if (pauseButton) {
 		if (pause_)
 			pauseButton->setText(obs_module_text("Button.Resume"));
@@ -234,11 +249,15 @@ void LoudnessDock::on_pause(bool pause_)
 
 void LoudnessDock::on_pause_resume()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	on_pause(!paused);
 }
 
 void LoudnessDock::on_timer()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	uint32_t flags = LOUDNESS_GET_SHORT;
 
 	if (!loudness)
@@ -281,6 +300,8 @@ void LoudnessDock::on_timer()
 
 void LoudnessDock::on_config()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	if (dialog) {
 		delete dialog;
 	}
@@ -293,6 +314,8 @@ void LoudnessDock::on_config()
 
 void LoudnessDock::on_config_changed()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	if (!dialog) {
 		blog(LOG_ERROR, "on_config_changed: no dialog");
 		return;
@@ -307,6 +330,8 @@ void LoudnessDock::on_config_changed()
 
 void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	if (cfg.bar_thresholds.size() + 1 != cfg.bar_fg_colors.size()) {
 		size_t n_colors;
 		if (cfg.bar_thresholds.size() <= 0 || cfg.bar_fg_colors.size() <= 1)

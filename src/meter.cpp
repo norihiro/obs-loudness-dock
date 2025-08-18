@@ -63,6 +63,8 @@ struct private_data
 
 SingleMeter::SingleMeter(QWidget *parent) : QWidget(parent), data(*new struct private_data)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	data.colors.push_back({-23.0, QColor(0, 0, 255), QColor(0, 0, 85)});
 	data.colors.push_back({-14.0, QColor(0, 255, 0), QColor(0, 85, 0)});
 	data.colors.push_back({0.0, QColor(255, 0, 0), QColor(85, 0, 0)});
@@ -83,11 +85,15 @@ SingleMeter::SingleMeter(QWidget *parent) : QWidget(parent), data(*new struct pr
 
 SingleMeter::~SingleMeter()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	delete &data;
 }
 
 void SingleMeter::setRange(float min, float max)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	data.min = min;
 	data.max = max;
 
@@ -97,6 +103,8 @@ void SingleMeter::setRange(float min, float max)
 void SingleMeter::setColors(const float *levels, const uint32_t *fg_colors, const uint32_t *bg_colors,
 			    uint32_t n_colors)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	data.colors.resize(n_colors);
 
 	for (uint32_t i = 0; i < n_colors; i++) {
@@ -110,6 +118,8 @@ void SingleMeter::setColors(const float *levels, const uint32_t *fg_colors, cons
 
 void SingleMeter::setLevel(float level)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	data.current = level;
 
 	/* Update only the bar. */
@@ -124,6 +134,8 @@ void SingleMeter::setLevel(float level)
 
 void SingleMeter::paintEvent(QPaintEvent *event)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	QRect widgetRect = rect();
 	int width = widgetRect.width();
 	int height = widgetRect.height();

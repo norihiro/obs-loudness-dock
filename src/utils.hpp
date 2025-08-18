@@ -1,6 +1,16 @@
 #pragma once
 #include <QColor>
 
+#ifdef WITH_ASSERT_THREAD
+#define ASSERT_THREAD(type)                                                                     \
+	do {                                                                                    \
+		if (!obs_in_task_thread(type))                                                  \
+			blog(LOG_ERROR, "%s: ASSERT_THREAD failed: Expected " #type, __func__); \
+	} while (false)
+#else
+#define ASSERT_THREAD(type)
+#endif
+
 static inline QColor color_from_int(uint32_t val)
 {
 	return QColor(val & 0xff, (val >> 8) & 0xff, (val >> 16) & 0xff);

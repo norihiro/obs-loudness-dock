@@ -15,6 +15,8 @@ set(PLUGIN_URL "https://obsproject.com/forum/resources/loudness-dock.1751/")
 # Replace `me@contoso.com` with the maintainer email address you want to put in Linux packages
 set(LINUX_MAINTAINER_EMAIL "norihiro@nagater.net")
 
+option(WITH_ASSERT_THREAD "Enable thread assertion" OFF)
+
 # TAKE NOTE: No need to edit things past this point
 
 set(CMAKE_AUTOMOC ON)

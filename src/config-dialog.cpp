@@ -26,6 +26,8 @@ typedef struct item_s item_t;
 ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	: QDialog(parent), config(cfg), config_orig(cfg)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	setWindowTitle("Loudness Dock Configuration");
 	auto *mainLayout = new QVBoxLayout(this);
 
@@ -77,6 +79,8 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 
 void ConfigDialog::reject()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	config = config_orig;
 	changed();
 
@@ -85,6 +89,8 @@ void ConfigDialog::reject()
 
 void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uint32_t color_bg)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	colorTable->insertRow(ix);
 	char text[32];
 
@@ -106,6 +112,8 @@ void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uin
 
 void ConfigDialog::on_color_table_add()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	auto *ci = colorTable->currentItem();
 	int ix = ci && ci->isSelected() ? ci->row() : colorTable->rowCount();
 
@@ -114,6 +122,8 @@ void ConfigDialog::on_color_table_add()
 
 void ConfigDialog::on_color_table_remove()
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	auto *ci = colorTable->currentItem();
 	if (!ci || !ci->isSelected())
 		return;
@@ -124,6 +134,8 @@ void ConfigDialog::on_color_table_remove()
 
 void ConfigDialog::on_color_table_changed(int row, int column)
 {
+	ASSERT_THREAD(OBS_TASK_UI);
+
 	std::vector<item_t> data;
 
 	int n_row = colorTable->rowCount();
