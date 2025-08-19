@@ -25,10 +25,13 @@ set(CMAKE_AUTOUIC ON)
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(libobs REQUIRED)
-find_package(obs-frontend-api REQUIRED)
-include(cmake/ObsPluginHelpers.cmake)
-find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+	find_package(libobs REQUIRED)
+	find_package(obs-frontend-api REQUIRED)
+	include(cmake/ObsPluginHelpers.cmake)
+	add_library(OBS::frontend-api ALIAS OBS::obs-frontend-api)
+	find_qt(VERSION ${QT_VERSION} COMPONENTS Widgets Core Gui)
+endif()
 
 find_package(PkgConfig QUIET)
 if(PKG_CONFIG_FOUND)
@@ -38,19 +41,6 @@ endif()
 configure_file(
 	src/plugin-macros.h.in
 	plugin-macros.generated.h
-)
-configure_file(
-	installer/installer-Windows.iss.in
-	installer-Windows.generated.iss
-)
-
-configure_file(
-	ci/ci_includes.sh.in
-	ci/ci_includes.generated.sh
-)
-configure_file(
-	ci/ci_includes.cmd.in
-	ci/ci_includes.generated.cmd
 )
 
 set(PLUGIN_SOURCES
@@ -67,11 +57,11 @@ if(NOT PC_LIBEBUR128_FOUND)
 	set(PLUGIN_SOURCES ${PLUGIN_SOURCES} deps/libebur128/ebur128/ebur128.c)
 endif()
 
-add_library(${CMAKE_PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
+add_library(${PROJECT_NAME} MODULE ${PLUGIN_SOURCES})
 
-target_link_libraries(${CMAKE_PROJECT_NAME}
+target_link_libraries(${PROJECT_NAME}
 	OBS::libobs
-	OBS::obs-frontend-api
+	OBS::frontend-api
 	Qt::Core
 	Qt::Widgets
 	Qt::Gui
@@ -79,27 +69,27 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 )
 
 if(PC_LIBEBUR128_FOUND)
-	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE ${PC_LIBEBUR128_CFLAGS})
-	target_link_libraries(${CMAKE_PROJECT_NAME} ${PC_LIBEBUR128_LIBRARIES})
+	target_compile_options(${PROJECT_NAME} PRIVATE ${PC_LIBEBUR128_CFLAGS})
+	target_link_libraries(${PROJECT_NAME} ${PC_LIBEBUR128_LIBRARIES})
 else()
-	target_include_directories(${CMAKE_PROJECT_NAME}
+	target_include_directories(${PROJECT_NAME}
 		PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/deps/libebur128/ebur128
 		${CMAKE_CURRENT_SOURCE_DIR}/deps/libebur128/ebur128/queue
 	)
 endif()
 
-target_include_directories(${CMAKE_PROJECT_NAME}
+target_include_directories(${PROJECT_NAME}
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}/deps/obs-websocket
 )
 
 option(ENABLE_PROFILE "Enable profile" OFF)
 if(ENABLE_PROFILE)
-	target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE "-DENABLE_PROFILE")
+	target_compile_definitions(${PROJECT_NAME} PRIVATE "-DENABLE_PROFILE")
 endif()
 
-target_include_directories(${CMAKE_PROJECT_NAME}
+target_include_directories(${PROJECT_NAME}
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}
 	${CMAKE_CURRENT_BINARY_DIR}
@@ -117,13 +107,13 @@ if(OS_WINDOWS)
 		add_definitions("-D_USE_MATH_DEFINES") # for M_PI
 	endif()
 
-	target_link_libraries(${CMAKE_PROJECT_NAME} OBS::w32-pthreads)
+	target_link_libraries(${PROJECT_NAME} OBS::w32-pthreads)
 endif()
 
 if(OS_LINUX)
-	target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE -Wall -Wextra)
-	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -Wl,-z,defs)
-	target_link_options(${CMAKE_PROJECT_NAME} PRIVATE -Wl,--unresolved-symbols=report-all)
+	target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra)
+	target_link_options(${PROJECT_NAME} PRIVATE -Wl,-z,defs)
+	target_link_options(${PROJECT_NAME} PRIVATE -Wl,--unresolved-symbols=report-all)
 	if(ENABLE_COVERAGE)
 		target_compile_options(${PROJECT_NAME} PRIVATE -coverage)
 		target_link_options(${PROJECT_NAME} PRIVATE -coverage)
@@ -133,12 +123,31 @@ endif()
 if(APPLE)
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -fvisibility=default")
 
-	set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES PREFIX "")
+	set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
 	set(MACOSX_PLUGIN_GUI_IDENTIFIER "${MACOS_BUNDLEID}")
-	set(MACOSX_PLUGIN_BUNDLE_VERSION "${CMAKE_PROJECT_VERSION}")
+	set(MACOSX_PLUGIN_BUNDLE_VERSION "${PROJECT_VERSION}")
 	set(MACOSX_PLUGIN_SHORT_VERSION_STRING "1")
 endif()
 
-setup_plugin_target(${CMAKE_PROJECT_NAME})
+setup_plugin_target(${PROJECT_NAME})
 
-configure_file(installer/installer-macOS.pkgproj.in installer-macOS.generated.pkgproj)
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_CURRENT_SOURCE_DIR})
+	configure_file(
+		installer/installer-Windows.iss.in
+		installer-Windows.generated.iss
+	)
+
+	configure_file(
+		ci/ci_includes.sh.in
+		ci/ci_includes.generated.sh
+	)
+	configure_file(
+		ci/ci_includes.cmd.in
+		ci/ci_includes.generated.cmd
+	)
+
+	configure_file(
+		installer/installer-macOS.pkgproj.in
+		installer-macOS.generated.pkgproj
+	)
+endif()
