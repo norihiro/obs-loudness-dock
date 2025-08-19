@@ -103,14 +103,14 @@ void loudness_get(loudness_t *loudness, double results[5], uint32_t flags)
 		double peak = 0.0;
 		ebur128_loudness_global(loudness->state, &results[2]);
 		ebur128_loudness_range(loudness->state, &results[3]);
-		for (size_t ch = 0; ch < loudness->state->channels; ch++) {
+		for (unsigned int ch = 0; ch < loudness->state->channels; ch++) {
 			double peak_ch;
 			if (ebur128_true_peak(loudness->state, ch, &peak_ch) == 0) {
 				if (peak_ch > peak)
 					peak = peak_ch;
 			}
 		}
-		results[4] = obs_mul_to_db(peak);
+		results[4] = (float)obs_mul_to_db(peak);
 	}
 
 	pthread_mutex_unlock(&loudness->mutex);

@@ -368,7 +368,7 @@ void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 		if (!meter)
 			continue;
 		meter->setColors(cfg.bar_thresholds.data(), cfg.bar_fg_colors.data(), cfg.bar_bg_colors.data(),
-				 cfg.bar_fg_colors.size());
+				 (uint32_t)cfg.bar_fg_colors.size());
 	}
 
 	config = std::move(cfg);
