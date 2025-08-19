@@ -47,12 +47,13 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	colorTable->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 	colorTable->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
 
-	for (uint32_t i = 0; i < cfg.bar_fg_colors.size() and i < cfg.bar_bg_colors.size(); i++) {
+	for (uint32_t i = 0; i < cfg.bar_fg_colors.size() && i < cfg.bar_bg_colors.size(); i++) {
 		float th = i < cfg.bar_thresholds.size() ? cfg.bar_thresholds[i] : 0.0f;
 		ColorTableAdd(i, th, cfg.bar_fg_colors[i], cfg.bar_bg_colors[i]);
 	}
 
-	colorTable->setMinimumHeight(colorTable->rowHeight(0) * 5);
+	if (colorTable->rowCount())
+		colorTable->setMinimumHeight(colorTable->rowHeight(0) * 5);
 	colorTable->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 	colorTable->setMinimumWidth(colorTable->horizontalHeader()->length() + colorTable->verticalHeader()->width() +
 				    colorTable->verticalScrollBar()->width());
@@ -92,10 +93,8 @@ void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uin
 	ASSERT_THREAD(OBS_TASK_UI);
 
 	colorTable->insertRow(ix);
-	char text[32];
 
-	snprintf(text, sizeof(text), "%0.1f", threshold);
-	auto *item = new QTableWidgetItem(text);
+	auto *item = new QTableWidgetItem(QString::number(threshold, 'f', 1));
 	item->setFlags(Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable);
 	colorTable->setItem(ix, 0, item);
 
@@ -169,8 +168,11 @@ void ConfigDialog::on_color_table_changed(int row, int column)
 
 	sort(data.begin(), data.end());
 
+	if (data.size() < 1)
+		return;
+
 	config.bar_thresholds.resize(data.size() - 1);
-	for (uint32_t i = 0; i < data.size(); i++)
+	for (uint32_t i = 0; i + 1 < data.size(); i++)
 		config.bar_thresholds[i] = data[i].threshold;
 
 	config.bar_fg_colors.resize(data.size());

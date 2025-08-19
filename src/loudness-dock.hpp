@@ -44,7 +44,6 @@ private: /* for EBU R 128 processing */
 private:
 	void on_reset();
 	void on_pause(bool pause);
-	void on_resume();
 	void on_pause_resume();
 	void on_timer();
 	void on_config();

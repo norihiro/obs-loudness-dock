@@ -303,7 +303,8 @@ void LoudnessDock::on_config()
 	ASSERT_THREAD(OBS_TASK_UI);
 
 	if (dialog) {
-		delete dialog;
+		dialog->raise();
+		return;
 	}
 
 	dialog = new ConfigDialog(config, this);
