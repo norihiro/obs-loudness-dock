@@ -41,16 +41,16 @@ configure_file(
 )
 configure_file(
 	installer/installer-Windows.iss.in
-	../installer/installer-Windows.generated.iss
+	installer-Windows.generated.iss
 )
 
 configure_file(
 	ci/ci_includes.sh.in
-	../ci/ci_includes.generated.sh
+	ci/ci_includes.generated.sh
 )
 configure_file(
 	ci/ci_includes.cmd.in
-	../ci/ci_includes.generated.cmd
+	ci/ci_includes.generated.cmd
 )
 
 set(PLUGIN_SOURCES
@@ -102,6 +102,11 @@ endif()
 target_include_directories(${CMAKE_PROJECT_NAME}
 	PRIVATE
 	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_BINARY_DIR}
+)
+
+target_include_directories(${PROJECT_NAME}
+	PRIVATE
 	${CMAKE_CURRENT_BINARY_DIR}
 )
 
