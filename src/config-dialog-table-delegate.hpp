@@ -14,7 +14,7 @@ public:
 		ASSERT_THREAD(OBS_TASK_UI);
 
 		QDoubleSpinBox *e = new QDoubleSpinBox(parent);
-		e->setRange(-50.0, 0.0);
+		e->setRange(-60.0, 0.0);
 		e->setDecimals(1);
 		return e;
 	}

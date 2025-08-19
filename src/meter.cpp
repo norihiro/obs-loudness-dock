@@ -38,8 +38,8 @@ struct color_s
 
 struct private_data
 {
-	float min = -50.0;
-	float max = 0.0;
+	float min = -59.0f;
+	float max = -5.0f;
 	float current = -99;
 
 	int current_int = -1;
