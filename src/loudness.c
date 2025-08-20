@@ -39,8 +39,10 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data);
 static bool init_state(loudness_t *loudness)
 {
 	struct obs_audio_info oai;
-	if (!obs_get_audio_info(&oai))
+	if (!obs_get_audio_info(&oai)) {
+		blog(LOG_ERROR, "obs_get_audio_info failed");
 		return false;
+	}
 
 	int mode = EBUR128_MODE_M | EBUR128_MODE_S | EBUR128_MODE_I | EBUR128_MODE_LRA | EBUR128_MODE_TRUE_PEAK;
 	loudness->state = ebur128_init(get_audio_channels(oai.speakers), oai.samples_per_sec, mode);
