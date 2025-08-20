@@ -145,7 +145,10 @@ void ConfigDialog::on_color_table_changed(int row, int column)
 	for (int i = 0; i < n_row; i++) {
 		item_t item;
 
-		item.threshold = colorTable->item(i, 0)->text().toDouble();
+		auto *thresholdItem = colorTable->item(i, 0);
+		if (!thresholdItem)
+			return;
+		item.threshold = thresholdItem->text().toDouble();
 
 		auto *fgColorItem = colorTable->item(i, 1);
 		if (!fgColorItem)
