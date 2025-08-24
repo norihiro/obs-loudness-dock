@@ -44,6 +44,8 @@ static loudness_dock_config_s load_config()
 
 	config_t *pc = obs_frontend_get_profile_config();
 
+	cfg.abbrev_label = config_get_bool(pc, CFG, "abbrev_label");
+
 	uint32_t n_colors = config_get_uint(pc, CFG, "n_colors");
 	if (!n_colors) {
 		n_colors = 3;
@@ -92,6 +94,8 @@ static void save_config(const loudness_dock_config_s &cfg)
 
 	config_t *pc = obs_frontend_get_profile_config();
 
+	config_set_bool(pc, CFG, "abbrev_label", cfg.abbrev_label);
+
 	config_set_uint(pc, CFG, "n_colors", cfg.bar_fg_colors.size());
 
 	for (uint32_t i = 0; i < cfg.bar_fg_colors.size(); i++) {
@@ -129,9 +133,9 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	topLayout->setColumnStretch(2, 1);
 
 	int row = 0;
-	auto add_stat = [&](const char *str, QLabel **valueLabel, SingleMeter **meter = nullptr) {
-		QLabel *label = new QLabel(str, this);
-		topLayout->addWidget(label, row, 0);
+	auto add_stat = [&](const char *str, QLabel **nameLabel, QLabel **valueLabel, SingleMeter **meter = nullptr) {
+		*nameLabel = new QLabel(str, this);
+		topLayout->addWidget(*nameLabel, row, 0);
 
 		if (valueLabel) {
 			*valueLabel = new QLabel("-", this);
@@ -150,11 +154,11 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		row++;
 	};
 
-	add_stat(obs_module_text("Label.Momentary"), &r128_momentary, &meter_momentary);
-	add_stat(obs_module_text("Label.Short"), &r128_short, &meter_short);
-	add_stat(obs_module_text("Label.Integrated"), &r128_integrated, &meter_integrated);
-	add_stat(obs_module_text("Label.Range"), &r128_range);
-	add_stat(obs_module_text("Label.Peak"), &r128_peak);
+	add_stat(obs_module_text("Label.Momentary"), &label_momentary, &r128_momentary, &meter_momentary);
+	add_stat(obs_module_text("Label.Short"), &label_short, &r128_short, &meter_short);
+	add_stat(obs_module_text("Label.Integrated"), &label_integrated, &r128_integrated, &meter_integrated);
+	add_stat(obs_module_text("Label.Range"), &label_range, &r128_range);
+	add_stat(obs_module_text("Label.Peak"), &label_peak, &r128_peak);
 
 	QHBoxLayout *buttonLayout = new QHBoxLayout;
 	buttonLayout->addStretch();
@@ -332,6 +336,21 @@ void LoudnessDock::on_config_changed()
 void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
+
+	if (config.abbrev_label && !cfg.abbrev_label) {
+		label_momentary->setText(obs_module_text("Label.Momentary"));
+		label_short->setText(obs_module_text("Label.Short"));
+		label_integrated->setText(obs_module_text("Label.Integrated"));
+		label_range->show();
+		label_peak->show();
+	}
+	else if (!config.abbrev_label && cfg.abbrev_label) {
+		label_momentary->setText("M");
+		label_short->setText("S");
+		label_integrated->setText("I");
+		label_range->hide();
+		label_peak->hide();
+	}
 
 	if (cfg.bar_thresholds.size() + 1 != cfg.bar_fg_colors.size()) {
 		size_t n_colors;

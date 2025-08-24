@@ -20,6 +20,12 @@ private:
 	QPushButton *pauseButton = nullptr;
 	bool paused = 0;
 
+	QLabel *label_momentary = nullptr;
+	QLabel *label_short = nullptr;
+	QLabel *label_integrated = nullptr;
+	QLabel *label_range = nullptr;
+	QLabel *label_peak = nullptr;
+
 	QLabel *r128_momentary = nullptr;
 	QLabel *r128_short = nullptr;
 	QLabel *r128_integrated = nullptr;

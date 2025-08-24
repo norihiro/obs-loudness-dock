@@ -18,6 +18,7 @@ signals:
 	void changed();
 
 private:
+	void on_abbrev_label_changed(bool checked);
 	void on_color_table_changed(int row, int column);
 	void on_color_table_add();
 	void on_color_table_remove();
@@ -25,6 +26,7 @@ private:
 	void ColorTableAdd(int ix, float threshold, uint32_t color_fg, uint32_t color_bg);
 
 private:
+	class QCheckBox *abbrevLabelCheck;
 	class QTableWidget *colorTable;
 
 	loudness_dock_config_s config;

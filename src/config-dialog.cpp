@@ -8,6 +8,7 @@
 #include <QTableWidget>
 #include <QHeaderView>
 #include <QScrollBar>
+#include <QCheckBox>
 #include "plugin-macros.generated.h"
 #include "config-dialog.hpp"
 #include "config-dialog-table-delegate.hpp"
@@ -33,6 +34,11 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 
 	auto *topLayout = new QGridLayout();
 	int row = 0;
+
+	abbrevLabelCheck = new QCheckBox(obs_module_text("Config.AbbrevLabel"), this);
+	abbrevLabelCheck->setCheckState(cfg.abbrev_label ? Qt::Checked : Qt::Unchecked);
+	connect(abbrevLabelCheck, &QCheckBox::toggled, this, &ConfigDialog::on_abbrev_label_changed);
+	topLayout->addWidget(abbrevLabelCheck, row++, 1);
 
 	// Color table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Colors"), this), row, 0);
@@ -129,6 +135,15 @@ void ConfigDialog::on_color_table_remove()
 
 	colorTable->removeRow(ci->row());
 	on_color_table_changed(-1, -1);
+}
+
+void ConfigDialog::on_abbrev_label_changed(bool checked)
+{
+	if (config.abbrev_label == checked)
+		return;
+
+	config.abbrev_label = checked;
+	changed();
 }
 
 void ConfigDialog::on_color_table_changed(int row, int column)
