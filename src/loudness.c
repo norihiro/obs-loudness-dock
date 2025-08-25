@@ -158,6 +158,11 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 #endif
 }
 
+int loudness_track(const loudness_t *loudness)
+{
+	return loudness->track;
+}
+
 void loudness_set_pause(loudness_t *loudness, bool paused)
 {
 	if (paused == loudness->paused)
@@ -171,6 +176,11 @@ void loudness_set_pause(loudness_t *loudness, bool paused)
 	else {
 		obs_add_raw_audio_callback(loudness->track, NULL, audio_cb, loudness);
 	}
+}
+
+bool loudness_paused(const loudness_t *loudness)
+{
+	return loudness->paused;
 }
 
 void loudness_reset(loudness_t *loudness)

@@ -26,7 +26,9 @@ void loudness_destroy(loudness_t *);
 #define LOUDNESS_GET_LONG (1 << 1)
 void loudness_get(loudness_t *loudness, double results[5], uint32_t flags);
 
+int loudness_track(const loudness_t *loudness);
 void loudness_set_pause(loudness_t *loudness, bool paused);
+bool loudness_paused(const loudness_t *loudness);
 void loudness_reset(loudness_t *loudness);
 
 #ifdef __cplusplus
