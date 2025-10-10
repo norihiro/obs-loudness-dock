@@ -23,6 +23,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QVariant>
 #include <QTimer>
 #include <QMainWindow>
+#include <QTabBar>
 #include <obs-frontend-api.h>
 #include <obs-websocket-api.h>
 #include <util/config-file.h>
@@ -33,6 +34,8 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include "utils.hpp"
 
 #define CFG "LoudnessDock"
+
+#define QT_TO_UTF8(str) str.toUtf8().constData()
 
 extern "C" obs_websocket_vendor ws_vendor;
 
@@ -45,6 +48,25 @@ static loudness_dock_config_s load_config()
 	config_t *pc = obs_frontend_get_profile_config();
 
 	cfg.abbrev_label = config_get_bool(pc, CFG, "abbrev_label");
+
+	uint32_t n_tabs = config_get_uint(pc, CFG, "n_tabs");
+	if (!n_tabs) {
+		n_tabs = 1;
+		cfg.tabs.resize(1);
+		cfg.tabs[0].name = "A";
+	}
+	else {
+		cfg.tabs.resize(n_tabs);
+
+		for (uint32_t i = 0; i < n_tabs; i++) {
+			char name[32];
+			snprintf(name, sizeof(name), "tab.%d.name", i);
+			cfg.tabs[i].name = config_get_string(pc, CFG, name);
+
+			snprintf(name, sizeof(name), "tab.%d.track", i);
+			cfg.tabs[i].track = config_get_int(pc, CFG, name);
+		}
+	}
 
 	uint32_t n_colors = config_get_uint(pc, CFG, "n_colors");
 	if (!n_colors) {
@@ -96,6 +118,16 @@ static void save_config(const loudness_dock_config_s &cfg)
 
 	config_set_bool(pc, CFG, "abbrev_label", cfg.abbrev_label);
 
+	config_set_uint(pc, CFG, "n_tabs", cfg.tabs.size());
+	for (uint32_t i = 0; i < cfg.tabs.size(); i++) {
+		char name[32];
+		snprintf(name, sizeof(name), "tab.%d.name", i);
+		config_set_string(pc, CFG, name, cfg.tabs[i].name.c_str());
+
+		snprintf(name, sizeof(name), "tab.%d.track", i);
+		config_set_int(pc, CFG, name, cfg.tabs[i].track);
+	}
+
 	config_set_uint(pc, CFG, "n_colors", cfg.bar_fg_colors.size());
 
 	for (uint32_t i = 0; i < cfg.bar_fg_colors.size(); i++) {
@@ -119,6 +151,14 @@ static void save_config(const loudness_dock_config_s &cfg)
 	config_save_safe(pc, "tmp", nullptr);
 }
 
+static const char *pause_resume_button_text(bool paused)
+{
+	if (paused)
+		return obs_module_text("Button.Resume");
+	else
+		return obs_module_text("Button.Pause");
+}
+
 LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
@@ -127,6 +167,9 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		r = -HUGE_VAL;
 
 	QVBoxLayout *mainLayout = new QVBoxLayout();
+
+	tabbar = new QTabBar(this);
+	mainLayout->addWidget(tabbar);
 
 	QGridLayout *topLayout = new QGridLayout();
 
@@ -186,9 +229,9 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	auto cfg = load_config();
 	apply_move_config(cfg);
 
-	obs_frontend_add_event_callback(LoudnessDock::on_frontend_event, this);
+	connect(tabbar, &QTabBar::currentChanged, this, &LoudnessDock::on_tabbar_changed);
 
-	loudness = loudness_create(0);
+	obs_frontend_add_event_callback(LoudnessDock::on_frontend_event, this);
 
 	QTimer *timer = new QTimer(this);
 	timer->start(100);
@@ -216,7 +259,8 @@ LoudnessDock::~LoudnessDock()
 		obs_websocket_vendor_unregister_request(ws_vendor, "pause");
 	}
 
-	loudness_destroy(loudness);
+	for (loudness_t *loudness : ll)
+		loudness_destroy(loudness);
 }
 
 extern "C" QWidget *create_loudness_dock()
@@ -231,19 +275,50 @@ void LoudnessDock::on_reset()
 {
 	ASSERT_THREAD(OBS_TASK_UI);
 
+	loudness_t *loudness = get();
+	if (!loudness)
+		return;
+
 	loudness_reset(loudness);
 	update_count = 0;
+}
+
+void LoudnessDock::on_tabbar_changed(int ix)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	ix_ll = ix;
+
+	update_pause_button();
+
+	update_count = 0;
+	on_timer();
+}
+
+void LoudnessDock::update_pause_button()
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	loudness_t *loudness = get();
+	if (!loudness) {
+		blog(LOG_ERROR, "%s: loudness is NULL. ix=%d", __func__, ix_ll);
+		return;
+	}
+
+	paused = loudness_paused(loudness);
+	pauseButton->setText(pause_resume_button_text(paused));
 }
 
 void LoudnessDock::on_pause(bool pause_)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
 
+	loudness_t *loudness = get();
+	if (!loudness)
+		return;
+
 	if (pauseButton) {
-		if (pause_)
-			pauseButton->setText(obs_module_text("Button.Resume"));
-		else
-			pauseButton->setText(obs_module_text("Button.Pause"));
+		pauseButton->setText(pause_resume_button_text(pause_));
 	}
 	paused = pause_;
 
@@ -264,6 +339,7 @@ void LoudnessDock::on_timer()
 
 	uint32_t flags = LOUDNESS_GET_SHORT;
 
+	loudness_t *loudness = get();
 	if (!loudness)
 		return;
 
@@ -352,6 +428,52 @@ void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 		label_peak->hide();
 	}
 
+	std::unique_lock<std::mutex> lock(results_mutex);
+
+	for (uint32_t i = 0; i < cfg.tabs.size() && (int)cfg.tabs.size() > tabbar->count(); i++) {
+		const auto &tab = cfg.tabs[i];
+		if (i >= cfg.tabs.size() || tab.name != QT_TO_UTF8(tabbar->tabText(i))) {
+			tabbar->insertTab(i, QString::fromStdString(tab.name));
+			ll.insert(ll.begin() + i, loudness_create(tab.track));
+		}
+	}
+	for (uint32_t i = 0; (int)i < tabbar->count() && (int)cfg.tabs.size() < tabbar->count();) {
+		if (i >= cfg.tabs.size() || cfg.tabs[i].name != QT_TO_UTF8(tabbar->tabText(i))) {
+			tabbar->removeTab(i);
+			loudness_t *l = ll[i];
+			ll.erase(ll.begin() + i);
+			loudness_destroy(l);
+		}
+		else
+			i++;
+	}
+	if ((int)cfg.tabs.size() != tabbar->count()) {
+		blog(LOG_ERROR,
+		     "Expected the tabbar size is same as the config but tabbar has %d items, "
+		     "cfg.tabs has %zu items.",
+		     tabbar->count(), cfg.tabs.size());
+	}
+	else {
+		for (uint32_t i = 0; i < cfg.tabs.size(); i++) {
+			const auto &tab = cfg.tabs[i];
+
+			if (tab.name != QT_TO_UTF8(tabbar->tabText(i))) {
+				tabbar->setTabText(i, QString::fromStdString(tab.name));
+			}
+
+			if (tab.track != loudness_track(ll[i])) {
+				loudness_t *l = ll[i];
+				ll[i] = loudness_create(tab.track);
+				loudness_destroy(l);
+			}
+		}
+	}
+
+	if (cfg.tabs.size() <= 1)
+		tabbar->hide();
+	else
+		tabbar->show();
+
 	if (cfg.bar_thresholds.size() + 1 != cfg.bar_fg_colors.size()) {
 		size_t n_colors;
 		if (cfg.bar_thresholds.size() <= 0 || cfg.bar_fg_colors.size() <= 1)
@@ -394,15 +516,28 @@ void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 	config = std::move(cfg);
 }
 
-void LoudnessDock::ws_get_loudness_cb(obs_data_t *, obs_data_t *response, void *priv_data)
+template<typename F> void run_functor(void *data)
 {
-	auto ld = static_cast<LoudnessDock *>(priv_data);
-	ld->ws_get_loudness_cb(response);
+	auto &fp = *static_cast<F *>(data);
+	fp();
 }
 
-void LoudnessDock::ws_get_loudness_cb(obs_data_t *response)
+template<typename F> void run_in_ui_and_wait(F f)
 {
-	std::unique_lock<std::mutex> lock(results_mutex);
+	if (obs_in_task_thread(OBS_TASK_UI))
+		f();
+	else
+		obs_queue_task(OBS_TASK_UI, run_functor<F>, &f, true);
+}
+
+void LoudnessDock::ws_get_loudness_cb(obs_data_t *request, obs_data_t *response, void *priv_data)
+{
+	auto ld = static_cast<LoudnessDock *>(priv_data);
+	run_in_ui_and_wait([ld, request, response]() { ld->ws_get_loudness_cb(request, response); });
+}
+
+static void ws_loudness_set_response(obs_data_t *response, double results[5])
+{
 	obs_data_set_double(response, "momentary", results[0]);
 	obs_data_set_double(response, "short", results[1]);
 	obs_data_set_double(response, "integrated", results[2]);
@@ -410,19 +545,52 @@ void LoudnessDock::ws_get_loudness_cb(obs_data_t *response)
 	obs_data_set_double(response, "peak", results[4]);
 }
 
-void LoudnessDock::ws_reset_cb(obs_data_t *, obs_data_t *, void *priv_data)
+void LoudnessDock::ws_get_loudness_cb(obs_data_t *request, obs_data_t *response)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	if (loudness_t *loudness = get_by_name_in_data(request)) {
+		double res[5];
+		loudness_get(loudness, res, LOUDNESS_GET_SHORT | LOUDNESS_GET_LONG);
+		ws_loudness_set_response(response, res);
+		return;
+	}
+
+	std::unique_lock<std::mutex> lock(results_mutex);
+	ws_loudness_set_response(response, results);
+}
+
+void LoudnessDock::ws_reset_cb(obs_data_t *request, obs_data_t *, void *priv_data)
 {
 	auto ld = static_cast<LoudnessDock *>(priv_data);
-	QMetaObject::invokeMethod(ld, [=]() { ld->on_reset(); }, Qt::QueuedConnection);
+
+	run_in_ui_and_wait([ld, request]() {
+		if (loudness_t *loudness = ld->get_by_name_in_data(request))
+			loudness_reset(loudness);
+		else
+			ld->on_reset();
+	});
 }
 
 void LoudnessDock::ws_pause_cb(obs_data_t *request, obs_data_t *, void *priv_data)
 {
 	auto ld = static_cast<LoudnessDock *>(priv_data);
-	bool p = true;
-	if (obs_data_has_user_value(request, "pause") && !obs_data_get_bool(request, "pause"))
-		p = false;
-	QMetaObject::invokeMethod(ld, [=]() { ld->on_pause(p); }, Qt::QueuedConnection);
+
+	run_in_ui_and_wait([ld, request]() {
+		bool p = true;
+		if (obs_data_has_user_value(request, "pause") && !obs_data_get_bool(request, "pause"))
+			p = false;
+
+		if (loudness_t *loudness = ld->get_by_name_in_data(request)) {
+			loudness_set_pause(loudness, p);
+
+			/* For the case the selected loudness is paused/resumed, */
+			ld->update_pause_button();
+		}
+		else {
+			ld->on_pause(p);
+		}
+	});
 }
 
 void LoudnessDock::on_frontend_event(enum obs_frontend_event event)
@@ -437,4 +605,27 @@ void LoudnessDock::on_frontend_event(enum obs_frontend_event event, void *data)
 {
 	auto ld = static_cast<LoudnessDock *>(data);
 	ld->on_frontend_event(event);
+}
+
+loudness_t *LoudnessDock::get_by_name(const char *name)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	std::unique_lock<std::mutex> lock(results_mutex);
+
+	for (size_t i = 0; i < config.tabs.size(); i++) {
+		if (config.tabs[i].name == name)
+			return ll[i];
+	}
+
+	return nullptr;
+}
+
+loudness_t *LoudnessDock::get_by_name_in_data(obs_data_t *request)
+{
+	const char *name = obs_data_get_string(request, "name");
+	if (name)
+		return get_by_name(name);
+
+	return nullptr;
 }

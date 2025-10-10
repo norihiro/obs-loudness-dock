@@ -40,6 +40,28 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	connect(abbrevLabelCheck, &QCheckBox::toggled, this, &ConfigDialog::on_abbrev_label_changed);
 	topLayout->addWidget(abbrevLabelCheck, row++, 1);
 
+	// Tabs table
+	topLayout->addWidget(new QLabel(obs_module_text("Config.Tabs"), this), row, 0);
+	tabTable = new QTableWidget(0, 2, this);
+	topLayout->addWidget(tabTable, row++, 1);
+	QStringList tabTableHeader;
+	tabTableHeader << obs_module_text("Config.Tabs.Name") << obs_module_text("Config.Tabs.Track");
+	tabTable->setHorizontalHeaderLabels(tabTableHeader);
+	auto *tabTableControlLayout = new QHBoxLayout();
+	auto *tabTableAdd = new QPushButton(obs_module_text("Config.Add"), this);
+	auto *tabTableDel = new QPushButton(obs_module_text("Config.Remove"), this);
+	tabTableControlLayout->addWidget(tabTableAdd);
+	tabTableControlLayout->addWidget(tabTableDel);
+	topLayout->addLayout(tabTableControlLayout, row++, 1);
+
+	for (uint32_t i = 0; i < cfg.tabs.size(); i++) {
+		TabTableAdd(i, cfg.tabs[i]);
+	}
+
+	connect(tabTable, &QTableWidget::cellChanged, this, &ConfigDialog::on_tab_table_changed);
+	connect(tabTableAdd, &QPushButton::clicked, this, &ConfigDialog::on_tab_table_add);
+	connect(tabTableDel, &QPushButton::clicked, this, &ConfigDialog::on_tab_table_remove);
+
 	// Color table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Colors"), this), row, 0);
 	colorTable = new QTableWidget(0, 3, this);
@@ -94,6 +116,19 @@ void ConfigDialog::reject()
 	QDialog::reject();
 }
 
+void ConfigDialog::TabTableAdd(int ix, const struct loudness_dock_config_s::tab_config &tab)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	tabTable->insertRow(ix);
+
+	auto *item = new QTableWidgetItem(QString::fromStdString(tab.name));
+	tabTable->setItem(ix, 0, item);
+
+	item = new QTableWidgetItem(QString::number(tab.track));
+	tabTable->setItem(ix, 1, item);
+}
+
 void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uint32_t color_bg)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
@@ -113,6 +148,57 @@ void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uin
 	item = new QTableWidgetItem(qc_bg.name(QColor::HexRgb));
 	item->setBackground(QBrush(qc_bg));
 	colorTable->setItem(ix, 2, item);
+}
+
+void ConfigDialog::on_tab_table_add()
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	auto *ci = tabTable->currentItem();
+	int ix = ci && ci->isSelected() ? ci->row() : tabTable->rowCount();
+	if (ix < 0 || (int)config.tabs.size() < ix) {
+		blog(LOG_ERROR, "%s: invalid ix=%d", __func__, ix);
+		return;
+	}
+
+	char next_name = 'A';
+	for (const auto &tab : config.tabs) {
+		if (tab.name.size() != 1)
+			continue;
+		char n = tab.name[0];
+		if (n < 'A' || 'Z' <= n)
+			continue;
+		if (n >= next_name)
+			next_name = n + 1;
+	}
+
+	loudness_dock_config_s::tab_config tab;
+	tab.name = next_name;
+	config.tabs.insert(config.tabs.begin() + ix, tab);
+	TabTableAdd(ix, tab);
+
+	changed();
+}
+
+void ConfigDialog::on_tab_table_remove()
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	if (tabTable->rowCount() <= 1)
+		return;
+
+	auto *ci = tabTable->currentItem();
+	if (!ci || !ci->isSelected())
+		return;
+
+	int ix = ci->row();
+	if (ix < 0 || (int)config.tabs.size() <= ix)
+		return;
+
+	tabTable->removeRow(ix);
+	config.tabs.erase(config.tabs.begin() + ix);
+
+	changed();
 }
 
 void ConfigDialog::on_color_table_add()
@@ -143,6 +229,35 @@ void ConfigDialog::on_abbrev_label_changed(bool checked)
 		return;
 
 	config.abbrev_label = checked;
+	changed();
+}
+
+void ConfigDialog::on_tab_table_changed(int row, int column)
+{
+	ASSERT_THREAD(OBS_TASK_UI);
+
+	if (row < 0 || (int)config.tabs.size() <= row)
+		return;
+
+	if (column == 0) {
+		auto *item = tabTable->item(row, 0);
+		if (!item)
+			return;
+		config.tabs[row].name = item->text().toUtf8().constData();
+	}
+
+	if (column == 1) {
+		auto *item = tabTable->item(row, 1);
+		if (!item)
+			return;
+		bool ok = false;
+		int track = item->text().toInt(&ok);
+		if (ok && 0 <= track && track < MAX_AUDIO_MIXES)
+			config.tabs[row].track = track;
+		else
+			item->setText(QString::number(config.tabs[row].track));
+	}
+
 	changed();
 }
 
