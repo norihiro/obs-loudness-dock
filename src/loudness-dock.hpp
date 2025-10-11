@@ -59,6 +59,9 @@ private:
 	int ix_ll = 0;
 	uint32_t update_count = 0;
 
+	uint32_t streaming_recording_state = 0;
+	bool recording_paused = false;
+
 private:
 	void on_tabbar_changed(int ix);
 	void update_pause_button();

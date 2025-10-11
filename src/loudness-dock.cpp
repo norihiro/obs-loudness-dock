@@ -65,6 +65,10 @@ static loudness_dock_config_s load_config()
 
 			snprintf(name, sizeof(name), "tab.%d.track", i);
 			cfg.tabs[i].track = config_get_int(pc, CFG, name);
+
+			snprintf(name, sizeof(name), "tab.%d.trigger", i);
+			cfg.tabs[i].trigger_mode =
+				(loudness_dock_config_s::trigger_mode_e)config_get_int(pc, CFG, name);
 		}
 	}
 
@@ -126,6 +130,9 @@ static void save_config(const loudness_dock_config_s &cfg)
 
 		snprintf(name, sizeof(name), "tab.%d.track", i);
 		config_set_int(pc, CFG, name, cfg.tabs[i].track);
+
+		snprintf(name, sizeof(name), "tab.%d.trigger", i);
+		config_set_int(pc, CFG, name, (int)cfg.tabs[i].trigger_mode);
 	}
 
 	config_set_uint(pc, CFG, "n_colors", cfg.bar_fg_colors.size());
@@ -598,6 +605,82 @@ void LoudnessDock::on_frontend_event(enum obs_frontend_event event)
 	if (event == OBS_FRONTEND_EVENT_PROFILE_CHANGED) {
 		auto cfg = load_config();
 		apply_move_config(cfg);
+	}
+
+	bool streaming_updated = false;
+	bool recording_updated = false;
+	uint32_t next_state = streaming_recording_state;
+	if (event == OBS_FRONTEND_EVENT_STREAMING_STARTED) {
+		next_state |= loudness_dock_config_s::trigger_streaming;
+		streaming_updated = true;
+	}
+	else if (event == OBS_FRONTEND_EVENT_STREAMING_STOPPING) {
+		next_state &= ~loudness_dock_config_s::trigger_streaming;
+		streaming_updated = true;
+	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STARTED) {
+		next_state |= loudness_dock_config_s::trigger_recording;
+		recording_updated = true;
+	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_STOPPING) {
+		next_state &= ~loudness_dock_config_s::trigger_recording;
+		recording_updated = true;
+	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_UNPAUSED) {
+		// next_state |= loudness_dock_config_s::trigger_recording;
+		recording_paused = false;
+		recording_updated = true;
+	}
+	else if (event == OBS_FRONTEND_EVENT_RECORDING_PAUSED) {
+		// next_state &= ~loudness_dock_config_s::trigger_recording;
+		recording_paused = true;
+		recording_updated = true;
+	}
+
+	if (streaming_updated || recording_updated) {
+		ASSERT_THREAD(OBS_TASK_UI);
+		bool updated = false;
+		for (int i = 0; i < (int)ll.size(); i++) {
+			if (i >= (int)config.tabs.size())
+				continue;
+
+			const auto trigger_mode = config.tabs[i].trigger_mode;
+			if (streaming_updated && !(trigger_mode & loudness_dock_config_s::trigger_streaming))
+				continue;
+			if (recording_updated && !(trigger_mode & loudness_dock_config_s::trigger_recording))
+				continue;
+
+			if ((trigger_mode & streaming_recording_state) == 0 && (trigger_mode & next_state) != 0) {
+				loudness_reset(ll[i]);
+			}
+
+			auto state_for_pause = next_state;
+			if (recording_paused)
+				state_for_pause &= ~loudness_dock_config_s::trigger_recording;
+
+			if (trigger_mode & state_for_pause) {
+				loudness_set_pause(ll[i], false);
+			}
+			else {
+				bool was_paused = loudness_paused(ll[i]);
+				loudness_set_pause(ll[i], true);
+
+				if (!was_paused) {
+					double res[5];
+					loudness_get(ll[i], res, LOUDNESS_GET_SHORT | LOUDNESS_GET_LONG);
+					blog(LOG_INFO, "name='%s' track=%d M=%0.1f S=%0.1f I=%0.1f R=%0.1f P=%0.1f",
+					     config.tabs[i].name.c_str(), config.tabs[i].track, res[0], res[1], res[2], res[3],
+					     res[4]);
+				}
+			}
+			updated = true;
+		}
+
+		if (updated) {
+			update_count = 0;
+			update_pause_button();
+		}
+		streaming_recording_state = next_state;
 	}
 }
 

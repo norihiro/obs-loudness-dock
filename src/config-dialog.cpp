@@ -9,6 +9,7 @@
 #include <QHeaderView>
 #include <QScrollBar>
 #include <QCheckBox>
+#include <QComboBox>
 #include "plugin-macros.generated.h"
 #include "config-dialog.hpp"
 #include "config-dialog-table-delegate.hpp"
@@ -42,11 +43,15 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 
 	// Tabs table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Tabs"), this), row, 0);
-	tabTable = new QTableWidget(0, 2, this);
+	tabTable = new QTableWidget(0, 3, this);
 	topLayout->addWidget(tabTable, row++, 1);
 	QStringList tabTableHeader;
-	tabTableHeader << obs_module_text("Config.Tabs.Name") << obs_module_text("Config.Tabs.Track");
+	tabTableHeader << obs_module_text("Config.Tabs.Name") << obs_module_text("Config.Tabs.Track")
+		       << obs_module_text("Config.Trigger");
 	tabTable->setHorizontalHeaderLabels(tabTableHeader);
+	tabTable->setMinimumWidth(tabTable->horizontalHeader()->length() + tabTable->verticalHeader()->width() +
+				  tabTable->verticalScrollBar()->width());
+
 	auto *tabTableControlLayout = new QHBoxLayout();
 	auto *tabTableAdd = new QPushButton(obs_module_text("Config.Add"), this);
 	auto *tabTableDel = new QPushButton(obs_module_text("Config.Remove"), this);
@@ -127,6 +132,20 @@ void ConfigDialog::TabTableAdd(int ix, const struct loudness_dock_config_s::tab_
 
 	item = new QTableWidgetItem(QString::number(tab.track));
 	tabTable->setItem(ix, 1, item);
+
+	auto *trigger = new QComboBox(tabTable);
+	trigger->addItem(obs_module_text("Config.Trigger.None"), loudness_dock_config_s::trigger_none);
+	trigger->addItem(obs_module_text("Config.Trigger.Streaming"), loudness_dock_config_s::trigger_streaming);
+	trigger->addItem(obs_module_text("Config.Trigger.Recording"), loudness_dock_config_s::trigger_recording);
+	trigger->addItem(obs_module_text("Config.Trigger.Both"), loudness_dock_config_s::trigger_both);
+	trigger->setCurrentIndex(tab.trigger_mode); /* Assumes the code starts from 0 and no continuous */
+	tabTable->setCellWidget(ix, 2, trigger);
+
+	connect(trigger, &QComboBox::currentIndexChanged, [this, trigger, ix](int) {
+		tabTable->blockSignals(true);
+		config.tabs[ix].trigger_mode = (loudness_dock_config_s::trigger_mode_e)trigger->currentData().toInt();
+		tabTable->blockSignals(false);
+	});
 }
 
 void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uint32_t color_bg)
