@@ -258,7 +258,8 @@ LoudnessDock::~LoudnessDock()
 {
 	ASSERT_THREAD(OBS_TASK_UI);
 
-	obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
+	if (!frontend_exited)
+		obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
 
 	if (ws_vendor) {
 		obs_websocket_vendor_unregister_request(ws_vendor, "get_loudness");
@@ -605,6 +606,10 @@ void LoudnessDock::on_frontend_event(enum obs_frontend_event event)
 	if (event == OBS_FRONTEND_EVENT_PROFILE_CHANGED) {
 		auto cfg = load_config();
 		apply_move_config(cfg);
+	}
+	else if (event == OBS_FRONTEND_EVENT_EXIT) {
+		frontend_exited = true;
+		obs_frontend_remove_event_callback(LoudnessDock::on_frontend_event, this);
 	}
 
 	bool streaming_updated = false;

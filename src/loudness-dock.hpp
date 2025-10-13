@@ -48,6 +48,8 @@ private:
 	std::mutex results_mutex;
 	double results[5];
 
+	bool frontend_exited = false;
+
 private:
 	/* For EBU R 128 processing
 	 * Written by UI thread only.
