@@ -299,7 +299,7 @@ void LoudnessDock::on_tabbar_changed(int ix)
 	update_pause_button();
 
 	update_count = 0;
-	on_timer();
+	QMetaObject::invokeMethod(this, [this](){ on_timer(); }, Qt::QueuedConnection);
 }
 
 void LoudnessDock::update_pause_button()

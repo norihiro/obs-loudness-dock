@@ -214,8 +214,10 @@ void ConfigDialog::on_tab_table_remove()
 	if (ix < 0 || (int)config.tabs.size() <= ix)
 		return;
 
+	tabTable->blockSignals(true);
 	tabTable->removeRow(ix);
 	config.tabs.erase(config.tabs.begin() + ix);
+	tabTable->blockSignals(false);
 
 	changed();
 }
