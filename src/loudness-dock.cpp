@@ -247,7 +247,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	obs_frontend_add_event_callback(LoudnessDock::on_frontend_event, this);
 
 	QTimer *timer = new QTimer(this);
-	timer->start(100);
+	timer->start(24);
 	connect(timer, &QTimer::timeout, this, &LoudnessDock::on_timer);
 
 	/*
@@ -357,10 +357,10 @@ void LoudnessDock::on_timer()
 	if (!loudness)
 		return;
 
-	if (update_count == 0)
+	if (update_count % 2 == 0)
 		flags |= LOUDNESS_GET_LONG;
 
-	if (update_count >= 9)
+	if (update_count >= 15)
 		update_count = 0;
 	else
 		update_count++;
@@ -377,14 +377,20 @@ void LoudnessDock::on_timer()
 	lock.unlock();
 
 	if (flags & LOUDNESS_GET_SHORT) {
-		r128_momentary->setText(QStringLiteral("%1").arg(results[0], 2, 'f', 1));
-		r128_short->setText(QStringLiteral("%1").arg(results[1], 2, 'f', 1));
+		if (update_count % 4 == 0) {
+			/* TECH 3341 requires to update the short-term loudness at least 10 Hz. */
+			r128_momentary->setText(QStringLiteral("%1").arg(results[0], 2, 'f', 1));
+			r128_short->setText(QStringLiteral("%1").arg(results[1], 2, 'f', 1));
+		}
 
 		meter_momentary->setLevel(results[0]);
 		meter_short->setLevel(results[1]);
 	}
 	if (flags & LOUDNESS_GET_LONG) {
-		r128_integrated->setText(QStringLiteral("%1").arg(results[2], 2, 'f', 1));
+		if (update_count % 16 == 1) {
+			/* TECH 3341 requires to update at least 1 Hz. */
+			r128_integrated->setText(QStringLiteral("%1").arg(results[2], 2, 'f', 1));
+		}
 		r128_range->setText(QStringLiteral("%1").arg(results[3], 2, 'f', 1));
 		r128_peak->setText(QStringLiteral("%1").arg(results[4], 2, 'f', 1));
 
