@@ -180,35 +180,41 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 	QGridLayout *topLayout = new QGridLayout();
 
-	topLayout->setColumnStretch(2, 1);
+	topLayout->setColumnStretch(3, 1);
 
 	int row = 0;
-	auto add_stat = [&](const char *str, QLabel **nameLabel, QLabel **valueLabel, SingleMeter **meter = nullptr) {
+	auto add_stat = [&](const char *str, QLabel **nameLabel, QLabel **valueLabel, const char *unit,
+			    SingleMeter **meter = nullptr) {
 		*nameLabel = new QLabel(str, this);
 		topLayout->addWidget(*nameLabel, row, 0);
 
 		if (valueLabel) {
 			*valueLabel = new QLabel("-", this);
 			topLayout->addWidget(*valueLabel, row, 1);
+			(*valueLabel)->setAlignment(Qt::AlignRight);
 
 			QFontMetrics metrics((*valueLabel)->font());
-			QRect bounds = metrics.boundingRect(QStringLiteral("%1 LUFS").arg(-199.0, 2, 'f', 1));
+			QRect bounds = metrics.boundingRect(QStringLiteral("%1").arg(-199.0, 2, 'f', 1));
 			(*valueLabel)->setMinimumWidth(bounds.width());
+
+			auto *unitLabel = new QLabel(QString(unit));
+			topLayout->addWidget(unitLabel, row, 2);
+			unitLabel->setMinimumWidth(bounds.width());
 		}
 
 		if (meter) {
 			*meter = new SingleMeter(this);
-			topLayout->addWidget(*meter, row, 2);
+			topLayout->addWidget(*meter, row, 3);
 		}
 
 		row++;
 	};
 
-	add_stat(obs_module_text("Label.Momentary"), &label_momentary, &r128_momentary, &meter_momentary);
-	add_stat(obs_module_text("Label.Short"), &label_short, &r128_short, &meter_short);
-	add_stat(obs_module_text("Label.Integrated"), &label_integrated, &r128_integrated, &meter_integrated);
-	add_stat(obs_module_text("Label.Range"), &label_range, &r128_range);
-	add_stat(obs_module_text("Label.Peak"), &label_peak, &r128_peak);
+	add_stat(obs_module_text("Label.Momentary"), &label_momentary, &r128_momentary, "LUFS", &meter_momentary);
+	add_stat(obs_module_text("Label.Short"), &label_short, &r128_short, "LUFS", &meter_short);
+	add_stat(obs_module_text("Label.Integrated"), &label_integrated, &r128_integrated, "LUFS", &meter_integrated);
+	add_stat(obs_module_text("Label.Range"), &label_range, &r128_range, "LU");
+	add_stat(obs_module_text("Label.Peak"), &label_peak, &r128_peak, "dB<sub>TP</sub>");
 
 	QHBoxLayout *buttonLayout = new QHBoxLayout;
 	buttonLayout->addStretch();
@@ -371,16 +377,16 @@ void LoudnessDock::on_timer()
 	lock.unlock();
 
 	if (flags & LOUDNESS_GET_SHORT) {
-		r128_momentary->setText(QStringLiteral("%1 LUFS").arg(results[0], 2, 'f', 1));
-		r128_short->setText(QStringLiteral("%1 LUFS").arg(results[1], 2, 'f', 1));
+		r128_momentary->setText(QStringLiteral("%1").arg(results[0], 2, 'f', 1));
+		r128_short->setText(QStringLiteral("%1").arg(results[1], 2, 'f', 1));
 
 		meter_momentary->setLevel(results[0]);
 		meter_short->setLevel(results[1]);
 	}
 	if (flags & LOUDNESS_GET_LONG) {
-		r128_integrated->setText(QStringLiteral("%1 LUFS").arg(results[2], 2, 'f', 1));
-		r128_range->setText(QStringLiteral("%1 LU").arg(results[3], 2, 'f', 1));
-		r128_peak->setText(QStringLiteral("%1 dB<sub>TP</sub>").arg(results[4], 2, 'f', 1));
+		r128_integrated->setText(QStringLiteral("%1").arg(results[2], 2, 'f', 1));
+		r128_range->setText(QStringLiteral("%1").arg(results[3], 2, 'f', 1));
+		r128_peak->setText(QStringLiteral("%1").arg(results[4], 2, 'f', 1));
 
 		meter_integrated->setLevel(results[2]);
 	}
