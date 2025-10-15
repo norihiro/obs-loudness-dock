@@ -125,10 +125,13 @@ void SingleMeter::setLevel(float level)
 	/* Update only the bar. */
 	QRect widgetRect = rect();
 
-	if (data.toX(level, widgetRect) == data.current_int)
+	int next_int = data.toX(level, widgetRect);
+	if (next_int == data.current_int)
 		return;
 
-	QRect rect(0, 0, widgetRect.width(), widgetRect.height() - data.tick_height - data.font_height + 1);
+	int x0 = std::max(std::min(next_int, data.current_int) - 1, 0);
+	int x1 = std::min(std::max(next_int, data.current_int) + 1, widgetRect.width());
+	QRect rect(x0, 0, x1 - x0, widgetRect.height() - data.tick_height - data.font_height + 1);
 	update(rect);
 }
 
