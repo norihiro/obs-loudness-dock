@@ -24,6 +24,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <QFont>
 #include <QPainter>
 #include <QPaintEvent>
+#ifdef ENABLE_PROFILE
+#include <util/profiler.hpp>
+#endif
 #include "meter.hpp"
 #include "utils.hpp"
 
@@ -135,8 +138,15 @@ void SingleMeter::setLevel(float level)
 	update(rect);
 }
 
+#ifdef ENABLE_PROFILE
+static const char *name_paintEvent = "SingleMeter::paintEvent";
+#endif
+
 void SingleMeter::paintEvent(QPaintEvent *event)
 {
+#ifdef ENABLE_PROFILE
+	ScopeProfiler profiler(name_paintEvent);
+#endif
 	ASSERT_THREAD(OBS_TASK_UI);
 
 	QRect widgetRect = rect();
