@@ -27,6 +27,9 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 #include <obs-frontend-api.h>
 #include <obs-websocket-api.h>
 #include <util/config-file.h>
+#ifdef ENABLE_PROFILE
+#include <util/profiler.hpp>
+#endif
 #include "plugin-macros.generated.h"
 #include "loudness-dock.hpp"
 #include "config-dialog.hpp"
@@ -349,6 +352,9 @@ void LoudnessDock::on_pause_resume()
 
 void LoudnessDock::on_timer()
 {
+#ifdef ENABLE_PROFILE
+	ScopeProfiler profiler(__func__);
+#endif
 	ASSERT_THREAD(OBS_TASK_UI);
 
 	uint32_t flags = LOUDNESS_GET_SHORT;
