@@ -19,6 +19,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 #include <obs-module.h>
 #include <util/threading.h>
+#include <util/darray.h>
 #include "loudness.h"
 #include "ebur128.h"
 #include "plugin-macros.generated.h"
@@ -30,11 +31,15 @@ struct loudness
 	int track;
 	ebur128_state *state;
 	pthread_mutex_t mutex;
+	pthread_cond_t cond;
+	pthread_t thread;
 	float_array_t buf;
 	bool paused;
+	volatile bool cont;
 };
 
 void audio_cb(void *param, size_t mix_idx, struct audio_data *data);
+void *process_thread(void *param);
 
 static bool init_state(loudness_t *loudness)
 {
@@ -65,6 +70,10 @@ loudness_t *loudness_create(int track)
 	}
 
 	pthread_mutex_init(&loudness->mutex, NULL);
+	pthread_cond_init(&loudness->cond, NULL);
+	loudness->cont = true;
+
+	pthread_create(&loudness->thread, NULL, process_thread, loudness);
 
 	obs_add_raw_audio_callback(track, NULL, audio_cb, loudness);
 
@@ -77,8 +86,18 @@ void loudness_destroy(loudness_t *loudness)
 		return;
 
 	obs_remove_raw_audio_callback(loudness->track, audio_cb, loudness);
+
+	pthread_mutex_lock(&loudness->mutex);
+	loudness->cont = false;
+	pthread_cond_signal(&loudness->cond);
+	pthread_mutex_unlock(&loudness->mutex);
+
+	pthread_join(loudness->thread, NULL);
+
 	if (loudness->state)
 		ebur128_destroy(&loudness->state);
+
+	pthread_cond_destroy(&loudness->cond);
 	pthread_mutex_destroy(&loudness->mutex);
 	da_free(loudness->buf);
 	bfree(loudness);
@@ -122,13 +141,10 @@ void loudness_get(loudness_t *loudness, double results[5], uint32_t flags)
 #endif
 }
 
-#ifdef ENABLE_PROFILE
-static const char *name_audio_cb = "loudness-audio_cb";
-#endif
-
 void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 {
 #ifdef ENABLE_PROFILE
+	static const char *name_audio_cb = "loudness-audio_cb";
 	profile_start(name_audio_cb);
 #endif
 
@@ -139,16 +155,17 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 
 	if (loudness->state) {
 		const size_t nch = loudness->state->channels;
-		da_resize(loudness->buf, nch * data->frames);
+		size_t offset = loudness->buf.num;
+		da_resize(loudness->buf, offset + nch * data->frames);
 
-		float *array = loudness->buf.array;
+		float *array = offset + loudness->buf.array;
 		const float **data_in = (const float **)data->data;
 		for (size_t iframe = 0, k = 0; iframe < data->frames; iframe++) {
 			for (size_t ich = 0; ich < nch; ich++)
 				array[k++] = data_in[ich][iframe];
 		}
 
-		ebur128_add_frames_float(loudness->state, array, data->frames);
+		pthread_cond_signal(&loudness->cond);
 	}
 
 	pthread_mutex_unlock(&loudness->mutex);
@@ -156,6 +173,43 @@ void audio_cb(void *param, size_t mix_idx, struct audio_data *data)
 #ifdef ENABLE_PROFILE
 	profile_end(name_audio_cb);
 #endif
+}
+
+void *process_thread(void *param)
+{
+#ifdef ENABLE_PROFILE
+	static const char *name_ebur128_add_frames = "ebur128_add_frames";
+#endif
+	loudness_t *loudness = param;
+
+	os_set_thread_name("loudness");
+
+	pthread_mutex_lock(&loudness->mutex);
+
+	while (loudness->cont) {
+		pthread_cond_wait(&loudness->cond, &loudness->mutex);
+
+		if (!loudness->buf.num)
+			continue;
+
+#ifdef ENABLE_PROFILE
+		profile_start(name_ebur128_add_frames);
+#endif
+		size_t frames = loudness->buf.num / loudness->state->channels;
+		ebur128_add_frames_float(loudness->state, loudness->buf.array, frames);
+#if LIBOBS_API_VER < MAKE_SEMANTIC_VERSION(30, 0, 0)
+		loudness->buf.num = 0;
+#else
+		da_clear(loudness->buf);
+#endif
+#ifdef ENABLE_PROFILE
+		profile_end(name_ebur128_add_frames);
+#endif
+	}
+
+	pthread_mutex_unlock(&loudness->mutex);
+
+	return NULL;
 }
 
 int loudness_track(const loudness_t *loudness)
