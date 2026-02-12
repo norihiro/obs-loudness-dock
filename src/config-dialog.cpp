@@ -121,6 +121,15 @@ void ConfigDialog::reject()
 	QDialog::reject();
 }
 
+static int index_by_widget(QTableWidget *table, QWidget *widget, int column)
+{
+	for (int row = 0; row < table->rowCount(); row++) {
+		if (table->cellWidget(row, column) == widget)
+			return row;
+	}
+	return -1;
+}
+
 void ConfigDialog::TabTableAdd(int ix, const struct loudness_dock_config_s::tab_config &tab)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
@@ -142,10 +151,10 @@ void ConfigDialog::TabTableAdd(int ix, const struct loudness_dock_config_s::tab_
 	tabTable->setCellWidget(ix, 2, trigger);
 
 	connect(trigger, &QComboBox::currentIndexChanged, [this, trigger](int) {
-		tabTable->blockSignals(true);
-		int ix = tabTable->currentRow();
-		config.tabs[ix].trigger_mode = (loudness_dock_config_s::trigger_mode_e)trigger->currentData().toInt();
-		tabTable->blockSignals(false);
+		int ix = index_by_widget(tabTable, trigger, 2);
+		if (ix >= 0 && ix < (int)config.tabs.size())
+			config.tabs[ix].trigger_mode =
+				(loudness_dock_config_s::trigger_mode_e)trigger->currentData().toInt();
 	});
 }
 
