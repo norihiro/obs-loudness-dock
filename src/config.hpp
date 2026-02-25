@@ -4,6 +4,14 @@
 
 struct loudness_dock_config_s
 {
+	enum timescale_flags_e : uint32_t {
+		timescale_momentary = 1 << 0,
+		timescale_shortterm = 1 << 1,
+		timescale_integrated = 1 << 2,
+		timescale_range = 1 << 3,
+		timescale_peak = 1 << 4,
+	};
+
 	enum trigger_mode_e {
 		trigger_none = 0,
 		trigger_streaming = 1,
@@ -19,6 +27,7 @@ struct loudness_dock_config_s
 	};
 
 	bool abbrev_label = false;
+	uint32_t hide_timescales = 0;
 
 	std::vector<tab_config> tabs;
 
