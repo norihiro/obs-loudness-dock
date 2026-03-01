@@ -30,7 +30,7 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 {
 	ASSERT_THREAD(OBS_TASK_UI);
 
-	setWindowTitle("Loudness Dock Configuration");
+	setWindowTitle(obs_module_text("Config.Dialog"));
 	auto *mainLayout = new QVBoxLayout(this);
 
 	auto *topLayout = new QGridLayout();
