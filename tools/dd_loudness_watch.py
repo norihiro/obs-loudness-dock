@@ -91,7 +91,7 @@ class MyOBSWSClient:
             res = await self.ws_send_request(
                     'CallVendorRequest',
                     {
-                        'vendorName': 'obs-loudness-dock',
+                        'vendorName': 'loudness-dock',
                         'requestType': 'get_loudness',
                         'requestData': {}
                     })

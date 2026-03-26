@@ -25,28 +25,28 @@ def _main():
 
     if args.pause:
         cl.send('CallVendorRequest', {
-            'vendorName': 'obs-loudness-dock',
+            'vendorName': 'loudness-dock',
             'requestType': 'pause',
             'requestData': data | {'pause': True},
         })
 
     if args.reset:
         cl.send('CallVendorRequest', {
-            'vendorName': 'obs-loudness-dock',
+            'vendorName': 'loudness-dock',
             'requestType': 'reset',
             'requestData': data,
         })
 
     if args.resume:
         cl.send('CallVendorRequest', {
-            'vendorName': 'obs-loudness-dock',
+            'vendorName': 'loudness-dock',
             'requestType': 'pause',
             'requestData': data | {'pause': False},
         })
 
     if not (args.pause or args.resume or args.reset):
         res = cl.send('CallVendorRequest', {
-            'vendorName': 'obs-loudness-dock',
+            'vendorName': 'loudness-dock',
             'requestType': 'get_loudness',
             'requestData': data,
         })
