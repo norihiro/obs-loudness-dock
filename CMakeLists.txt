@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 
-project(loudness-dock VERSION 0.5.0)
+project(loudness-dock VERSION 0.5.1)
 
 set(PLUGIN_AUTHOR "Norihiro Kamae")
 
