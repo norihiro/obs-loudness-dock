@@ -31,6 +31,12 @@ private:
 	QLabel *label_range = nullptr;
 	QLabel *label_peak = nullptr;
 
+	QLabel *unit_momentary = nullptr;
+	QLabel *unit_short = nullptr;
+	QLabel *unit_integrated = nullptr;
+	QLabel *unit_range = nullptr;
+	QLabel *unit_peak = nullptr;
+
 	QLabel *r128_momentary = nullptr;
 	QLabel *r128_short = nullptr;
 	QLabel *r128_integrated = nullptr;

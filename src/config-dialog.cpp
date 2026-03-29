@@ -41,6 +41,46 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	connect(abbrevLabelCheck, &QCheckBox::toggled, this, &ConfigDialog::on_abbrev_label_changed);
 	topLayout->addWidget(abbrevLabelCheck, row++, 1);
 
+	// Show Timescales
+	topLayout->addWidget(new QLabel(obs_module_text("Config.ShowTimescales"), this), row, 0);
+	struct
+	{
+		const char *text;
+		const char *objectName;
+		uint32_t mask;
+	} showTimescalesInfo[] = {
+		{obs_module_text("Config.ShowTimescales.Momentary"), "showTimescalesMomentary",
+		 loudness_dock_config_s::timescale_momentary},
+		{obs_module_text("Config.ShowTimescales.Short"), "showTimescalesShort",
+		 loudness_dock_config_s::timescale_shortterm},
+		{obs_module_text("Config.ShowTimescales.Integrated"), "showTimescalesIntegrated",
+		 loudness_dock_config_s::timescale_integrated},
+		{obs_module_text("Config.ShowTimescales.Range"), "showTimescalesRange",
+		 loudness_dock_config_s::timescale_range},
+		{obs_module_text("Config.ShowTimescales.Peak"), "showTimescalesPeak",
+		 loudness_dock_config_s::timescale_peak},
+	};
+
+	QGridLayout *showTimescaleLayout = new QGridLayout();
+	int col = 0;
+	for (const auto &info : showTimescalesInfo) {
+		auto *widget = new QCheckBox(info.text, this);
+		widget->setObjectName(info.objectName);
+		auto mask = info.mask;
+		widget->setCheckState(cfg.hide_timescales & mask ? Qt::Unchecked : Qt::Checked);
+		connect(widget, &QCheckBox::toggled, [this, mask](bool checked) {
+			auto next = this->config.hide_timescales;
+			next = checked ? next & ~mask : next | mask;
+			if (next != this->config.hide_timescales) {
+				this->config.hide_timescales = next;
+				this->changed();
+			}
+		});
+		showTimescaleLayout->addWidget(widget, col / 3, col % 3);
+		col++;
+	}
+	topLayout->addLayout(showTimescaleLayout, row++, 1);
+
 	// Tabs table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Tabs"), this), row, 0);
 	tabTable = new QTableWidget(0, 3, this);
