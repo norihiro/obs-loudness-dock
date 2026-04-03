@@ -17,6 +17,10 @@ public:
 signals:
 	void changed();
 
+public slots:
+	void setTabTableCell(int row, int column);
+	void setColorTableCell(int row, int column);
+
 private:
 	void on_abbrev_label_changed(bool checked);
 	void on_tab_table_changed(int row, int column);

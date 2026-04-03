@@ -185,6 +185,16 @@ void ConfigDialog::ColorTableAdd(int ix, float threshold, uint32_t color_fg, uin
 	colorTable->setItem(ix, 2, item);
 }
 
+void ConfigDialog::setTabTableCell(int row, int column)
+{
+	tabTable->setCurrentCell(row, column);
+}
+
+void ConfigDialog::setColorTableCell(int row, int column)
+{
+	colorTable->setCurrentCell(row, column);
+}
+
 void ConfigDialog::on_tab_table_add()
 {
 	ASSERT_THREAD(OBS_TASK_UI);
