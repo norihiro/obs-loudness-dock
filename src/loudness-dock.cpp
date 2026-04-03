@@ -229,6 +229,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 	buttonLayout->addStretch();
 
 	pauseButton = new QPushButton(obs_module_text("Button.Pause"), this);
+	pauseButton->setObjectName("pauseButton");
 	buttonLayout->addWidget(pauseButton);
 	connect(pauseButton, &QPushButton::clicked, this, &LoudnessDock::on_pause_resume);
 
@@ -241,6 +242,8 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		configButton->setProperty("class", "btn-tool icon-gear");
 	else
 		configButton->setText(obs_module_text("Button.Configuration"));
+	configButton->setAccessibleName(obs_module_text("Button.Configuration"));
+	configButton->setObjectName("configButton");
 	buttonLayout->addWidget(configButton);
 	connect(configButton, &QPushButton::clicked, this, &LoudnessDock::on_config);
 

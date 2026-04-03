@@ -44,6 +44,7 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	// Tabs table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Tabs"), this), row, 0);
 	tabTable = new QTableWidget(0, 3, this);
+	tabTable->setObjectName("tabTable");
 	topLayout->addWidget(tabTable, row++, 1);
 	QStringList tabTableHeader;
 	tabTableHeader << obs_module_text("Config.Tabs.Name") << obs_module_text("Config.Tabs.Track")
@@ -55,6 +56,8 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	auto *tabTableControlLayout = new QHBoxLayout();
 	auto *tabTableAdd = new QPushButton(obs_module_text("Config.Add"), this);
 	auto *tabTableDel = new QPushButton(obs_module_text("Config.Remove"), this);
+	tabTableAdd->setObjectName("tabTableAdd");
+	tabTableDel->setObjectName("tabTableDel");
 	tabTableControlLayout->addWidget(tabTableAdd);
 	tabTableControlLayout->addWidget(tabTableDel);
 	topLayout->addLayout(tabTableControlLayout, row++, 1);
@@ -70,6 +73,7 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	// Color table
 	topLayout->addWidget(new QLabel(obs_module_text("Config.Colors"), this), row, 0);
 	colorTable = new QTableWidget(0, 3, this);
+	colorTable->setObjectName("colorTable");
 	topLayout->addWidget(colorTable, row++, 1);
 	colorTable->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked);
 	colorTable->setItemDelegateForColumn(0, new ThresholdSpinDelegate(colorTable));
@@ -94,6 +98,8 @@ ConfigDialog::ConfigDialog(const loudness_dock_config_s &cfg, QWidget *parent)
 	auto *colorTableControlLayout = new QHBoxLayout();
 	auto *colorTableAdd = new QPushButton(obs_module_text("Config.Add"), this);
 	auto *colorTableDel = new QPushButton(obs_module_text("Config.Remove"), this);
+	colorTableAdd->setObjectName("colorTableAdd");
+	colorTableDel->setObjectName("colorTableDel");
 	colorTableControlLayout->addWidget(colorTableAdd);
 	colorTableControlLayout->addWidget(colorTableDel);
 	topLayout->addLayout(colorTableControlLayout, row++, 1);
