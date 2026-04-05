@@ -52,6 +52,7 @@ static loudness_dock_config_s load_config()
 	config_t *pc = obs_frontend_get_profile_config();
 
 	cfg.abbrev_label = config_get_bool(pc, CFG, "abbrev_label");
+	cfg.hide_timescales = (uint32_t)config_get_uint(pc, CFG, "hide_timescales");
 
 	uint32_t n_tabs = config_get_uint(pc, CFG, "n_tabs");
 	if (!n_tabs) {
@@ -125,6 +126,7 @@ static void save_config(const loudness_dock_config_s &cfg)
 	config_t *pc = obs_frontend_get_profile_config();
 
 	config_set_bool(pc, CFG, "abbrev_label", cfg.abbrev_label);
+	config_set_uint(pc, CFG, "hide_timescales", cfg.hide_timescales);
 
 	config_set_uint(pc, CFG, "n_tabs", cfg.tabs.size());
 	for (uint32_t i = 0; i < cfg.tabs.size(); i++) {
@@ -188,7 +190,7 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 
 	int row = 0;
 	auto add_stat = [&](const char *str, QLabel **nameLabel, QLabel **valueLabel, const char *unit,
-			    SingleMeter **meter = nullptr) {
+			    QLabel **unitLabel, SingleMeter **meter = nullptr) {
 		*nameLabel = new QLabel(str, this);
 		topLayout->addWidget(*nameLabel, row, 0);
 
@@ -201,9 +203,9 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 			QRect bounds = metrics.boundingRect(QStringLiteral("%1").arg(-199.0, 2, 'f', 1));
 			(*valueLabel)->setMinimumWidth(bounds.width());
 
-			auto *unitLabel = new QLabel(QString(unit));
-			topLayout->addWidget(unitLabel, row, 2);
-			unitLabel->setMinimumWidth(bounds.width());
+			*unitLabel = new QLabel(QString(unit));
+			topLayout->addWidget(*unitLabel, row, 2);
+			(*unitLabel)->setMinimumWidth(bounds.width());
 		}
 
 		if (meter) {
@@ -214,11 +216,13 @@ LoudnessDock::LoudnessDock(QWidget *parent) : QFrame(parent)
 		row++;
 	};
 
-	add_stat(obs_module_text("Label.Momentary"), &label_momentary, &r128_momentary, "LUFS", &meter_momentary);
-	add_stat(obs_module_text("Label.Short"), &label_short, &r128_short, "LUFS", &meter_short);
-	add_stat(obs_module_text("Label.Integrated"), &label_integrated, &r128_integrated, "LUFS", &meter_integrated);
-	add_stat(obs_module_text("Label.Range"), &label_range, &r128_range, "LU");
-	add_stat(obs_module_text("Label.Peak"), &label_peak, &r128_peak, "dB<sub>TP</sub>");
+	add_stat(obs_module_text("Label.Momentary"), &label_momentary, &r128_momentary, "LUFS", &unit_momentary,
+		 &meter_momentary);
+	add_stat(obs_module_text("Label.Short"), &label_short, &r128_short, "LUFS", &unit_short, &meter_short);
+	add_stat(obs_module_text("Label.Integrated"), &label_integrated, &r128_integrated, "LUFS", &unit_integrated,
+		 &meter_integrated);
+	add_stat(obs_module_text("Label.Range"), &label_range, &r128_range, "LU", &unit_range);
+	add_stat(obs_module_text("Label.Peak"), &label_peak, &r128_peak, "dB<sub>TP</sub>", &unit_peak);
 
 	r128_momentary->setObjectName("r128_momentary");
 	r128_short->setObjectName("r128_short");
@@ -472,6 +476,38 @@ void LoudnessDock::apply_move_config(loudness_dock_config_s &cfg)
 		label_integrated->setText("I");
 		label_range->hide();
 		label_peak->hide();
+	}
+
+	if (config.hide_timescales != cfg.hide_timescales) {
+		bool vis;
+
+		vis = (cfg.hide_timescales & loudness_dock_config_s::timescale_momentary) == 0;
+		label_momentary->setVisible(vis);
+		r128_momentary->setVisible(vis);
+		unit_momentary->setVisible(vis);
+		meter_momentary->setVisible(vis);
+
+		vis = (cfg.hide_timescales & loudness_dock_config_s::timescale_shortterm) == 0;
+		label_short->setVisible(vis);
+		r128_short->setVisible(vis);
+		unit_short->setVisible(vis);
+		meter_short->setVisible(vis);
+
+		vis = (cfg.hide_timescales & loudness_dock_config_s::timescale_integrated) == 0;
+		label_integrated->setVisible(vis);
+		r128_integrated->setVisible(vis);
+		unit_integrated->setVisible(vis);
+		meter_integrated->setVisible(vis);
+
+		vis = (cfg.hide_timescales & loudness_dock_config_s::timescale_range) == 0;
+		label_range->setVisible(vis);
+		r128_range->setVisible(vis);
+		unit_range->setVisible(vis);
+
+		vis = (cfg.hide_timescales & loudness_dock_config_s::timescale_peak) == 0;
+		label_peak->setVisible(vis);
+		r128_peak->setVisible(vis);
+		unit_peak->setVisible(vis);
 	}
 
 	std::unique_lock<std::mutex> lock(results_mutex);
