@@ -45,18 +45,11 @@ private:
 
 	QPointer<class ConfigDialog> dialog;
 
-	std::mutex results_mutex;
 	double results[5];
 
 	bool frontend_exited = false;
 
 private:
-	/* For EBU R 128 processing
-	 * Written by UI thread only.
-	 * Can be read from other threads.
-	 * UI thread will lock `results_mutex` while writing.
-	 * Other threads need to lock when reading.
-	 * */
 	std::vector<loudness_t *> ll;
 	int ix_ll = 0;
 	uint32_t update_count = 0;
